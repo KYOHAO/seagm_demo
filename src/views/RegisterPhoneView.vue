@@ -24,38 +24,6 @@ const startCountdown = () => {
     }, 1000)
 }
 
-const handleResendCode = async () => {
-    if (countdown.value > 0) return
-    
-    isLoading.value = true
-    errorMessage.value = ''
-    try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                phone_number: phoneNumber.value
-            })
-        })
-
-        const data = await response.json()
-
-        if (response.ok && data.code === 0) {
-            alert(data.msg || '驗證碼已重新發送成功。')
-            startCountdown()
-        } else {
-            errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
-        }
-    } catch (error) {
-        console.error('API Error:', error)
-        errorMessage.value = '發生錯誤，請稍後再試。'
-    } finally {
-        isLoading.value = false
-    }
-}
-
 onUnmounted(() => {
     if (timer) clearInterval(timer)
 })
@@ -76,7 +44,7 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/phone`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,9 +59,84 @@ const handlePhoneSubmit = async () => {
     if (response.ok && data.code === 0) {
       step.value = 2
       startCountdown()
-      alert(data.msg || '驗證碼已發送成功。')
+      //alert(data.msg || '驗證碼已發送成功。')
+      alert('驗證碼已發送成功。')
     } else {
-      errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
+      //errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
+      errorMessage.value = handleApiError(data)
+    }
+  } catch (error) {
+    console.error('API Error:', error)
+    errorMessage.value = '發生錯誤，請稍後再試。'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleResendCode = async () => {
+    if (countdown.value > 0) return
+    
+    isLoading.value = true
+    errorMessage.value = ''
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                phone_number: phoneNumber.value
+            })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            //alert(data.msg || '驗證碼已重新發送成功。')
+            alert('驗證碼已重新發送成功。')
+            startCountdown()
+        } else {
+            //errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
+            errorMessage.value = handleApiError(data)
+        }
+    } catch (error) {
+        console.error('API Error:', error)
+        errorMessage.value = '發生錯誤，請稍後再試。'
+    } finally {
+        isLoading.value = false
+    }
+}
+
+const handleOtpSubmit = async () => {
+  if (otpCode.value.length !== 6) {
+    alert('請輸入6位數的驗證碼。')
+    return
+  }
+  
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/verify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        phone_number: phoneNumber.value,
+        verification_code: otpCode.value
+      })
+    })
+
+    const data = await response.json()
+
+    if (response.ok && data.code === 0) {
+      alert('驗證成功。')
+      step.value = 3
+    } else {
+      alert('驗證失敗，請檢查驗證碼。')
+      //errorMessage.value = handleApiError(data) || '驗證失敗，請檢查驗證碼。'
+      errorMessage.value = handleApiError(data)
     }
   } catch (error) {
     console.error('API Error:', error)
@@ -105,16 +148,6 @@ const handlePhoneSubmit = async () => {
 
 const password = ref('')
 const confirmPassword = ref('')
-
-const handleOtpSubmit = () => {
-  if (otpCode.value.length !== 6) {
-    alert('請輸入6位數的驗證碼。')
-    return
-  }
-  // Mock OTP verification success
-  step.value = 3
-}
-
 const handlePasswordSubmit = async () => {
   errorMessage.value = ''
   if (password.value !== confirmPassword.value) {
@@ -146,7 +179,8 @@ const handlePasswordSubmit = async () => {
        alert('註冊成功！請登入。')
        router.push('/login')
     } else {
-      errorMessage.value = handleApiError(data) || '註冊失敗。'
+      //errorMessage.value = handleApiError(data) || '註冊失敗。'
+      errorMessage.value = handleApiError(data)
     }
   } catch (error) {
     console.error('API Error:', error)

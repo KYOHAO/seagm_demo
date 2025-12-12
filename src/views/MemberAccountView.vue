@@ -29,223 +29,18 @@ const changePasswordForm = ref({
   confirmPassword: ''
 })
 
-const openEmailModal = () => {
-  emailStep.value = 1
-  emailForm.value = { email: '', code: '' }
-  const modalEl = document.getElementById('emailVerificationModal')
-  if (modalEl) {
-    emailModalInstance.value = new Modal(modalEl)
-    emailModalInstance.value.show()
-  }
-}
+onMounted(() => {
+    fetchUserInfo()
+    activeMenu.value = 'bank_accounts' // Optional: default to bank for testing? Or keep 'orders'
+})
 
-const sendEmailCode = async () => {
-  if (!emailForm.value.email) {
-    alert('Please enter your email address.')
-    return
-  }
-  
-  isEmailLoading.value = true
-  const token = localStorage.getItem('authToken')
-  try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/email/verify', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ email: emailForm.value.email })
-    })
-
-    const data = await response.json()
-
-    if (response.ok && data.code === 0) {
-      alert('Verification code sent to your email.')
-      emailStep.value = 2
-    } else {
-      const errorMsg = handleApiError(data)
-      alert(errorMsg || 'Failed to send verification code.')
+// Watch activeMenu to fetch when switching?
+import { watch } from 'vue'
+watch(activeMenu, (newVal) => {
+    if (newVal === 'bank_accounts') {
+        fetchBankAccounts()
     }
-  } catch (error) {
-    console.error('Email Verify Error:', error)
-    alert('An error occurred. Please try again.')
-  } finally {
-    isEmailLoading.value = false
-  }
-}
-
-const confirmEmail = async () => {
-  if (!emailForm.value.code) {
-    alert('Please enter the verification code.')
-    return
-  }
-
-  isEmailLoading.value = true
-  const token = localStorage.getItem('authToken')
-  try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/email/confirm', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ verification_code: emailForm.value.code })
-    })
-
-    const data = await response.json()
-
-    if (response.ok && data.code === 0) {
-      alert('Email verified successfully!')
-      // Update local user info
-      if (data.data && data.data.user) {
-        userInfo.value = data.data.user
-      } else {
-        // Fallback if API doesn't return user object as expected, though doc says it does
-        userInfo.value.email = emailForm.value.email
-      }
-      
-      if (emailModalInstance.value) {
-        emailModalInstance.value.hide()
-      }
-    } else {
-      const errorMsg = handleApiError(data)
-      alert(errorMsg || 'Verification failed.')
-    }
-  } catch (error) {
-    console.error('Email Confirm Error:', error)
-    alert('An error occurred. Please try again.')
-  } finally {
-    isEmailLoading.value = false
-  }
-}
-
-//const kycModalInstance = ref(null)
-
-const sendKYCInitiate = async () => {
-  const token = localStorage.getItem('authToken')
-  try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/kyc/initiate', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    })
-
-    const data = await response.json()
-    console.log(data)
-    if (response.ok && data.code === 0) {
-      alert('KYC initiate successfully!')
-      window.location.href = data.data.redirect_url
-    } else {
-      const errorMsg = handleApiError(data)
-      alert(errorMsg || 'Failed to initiate KYC.')
-    }
-  } catch (error) {
-    console.error('KYC Error:', error)
-    alert('An error occurred. Please try again.')
-  }
-}
-
-
-
-
-const openChangePasswordModal = async () => {
-  if (!userInfo.value.phone_number) {
-      alert('找不到電話號碼。')
-      return
-  }
-  
-  if (!confirm(`是否要發送驗證碼到 ${userInfo.value.phone_number}?`)) {
-      return
-  }
-
-  isChangePasswordLoading.value = true
-  const token = localStorage.getItem('authToken')
-  try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ phone_number: userInfo.value.phone_number })
-    })
-
-    const data = await response.json()
-
-    if (response.ok && data.code === 0) {
-      alert(data.msg || '發送驗證碼成功。')
-      changePasswordForm.value = { code: '', password: '', confirmPassword: '' }
-      
-      const modalEl = document.getElementById('changePasswordModal')
-      if (modalEl) {
-        changePasswordModalInstance.value = new Modal(modalEl)
-        changePasswordModalInstance.value.show()
-      }
-    } else {
-      const errorMsg = handleApiError(data)
-      alert(errorMsg || '發送驗證碼失敗。')
-    }
-  } catch (error) {
-    console.error('Send Code Error:', error)
-    alert('An error occurred. Please try again.')
-  } finally {
-    isChangePasswordLoading.value = false
-  }
-}
-
-const handleChangePasswordSubmit = async () => {
-    const { code, password, confirmPassword } = changePasswordForm.value
-    
-    if (!code || !password || !confirmPassword) {
-        alert('請填寫所有欄位。')
-        return
-    }
-    
-    if (password !== confirmPassword) {
-        alert('密碼不一致。')
-        return
-    }
-
-    if (password.length < 8) {
-        alert('密碼至少需要8位。')
-        return
-    }
-
-    isChangePasswordLoading.value = true
-    try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                phone_number: userInfo.value.phone_number,
-                verification_code: code,
-                password: password,
-                password_confirmation: confirmPassword
-            })
-        })
-
-        const data = await response.json()
-
-        if (response.ok && data.code === 0) {
-            alert(data.msg || '修改密碼成功。')
-            if (changePasswordModalInstance.value) {
-                changePasswordModalInstance.value.hide()
-            }
-            logout()
-        } else {
-            const errorMsg = handleApiError(data)
-            alert(errorMsg || '修改密碼失敗。')
-        }
-    } catch (error) {
-        console.error('Change Password Error:', error)
-        alert('發生錯誤，請稍後再試。')
-    } finally {
-        isChangePasswordLoading.value = false
-    }
-}
+})
 
 const fetchUserInfo = async () => {
     const token = localStorage.getItem('authToken')
@@ -278,10 +73,265 @@ const fetchUserInfo = async () => {
     }
 }
 
+const bankAccounts = ref([])
+const isBankLoading = ref(false)
+const fetchBankAccounts = async () => {
+    isBankLoading.value = true
+    const token = localStorage.getItem('authToken')
+    if (!token) return
 
-onMounted(() => {
-    fetchUserInfo()
-})
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/me/bank-account`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            bankAccounts.value = data.data.bank_accounts
+        } else {
+            console.error('Failed to fetch bank accounts:', data)
+        }
+    } catch (error) {
+        console.error('Fetch Bank Accounts Error:', error)
+    } finally {
+        isBankLoading.value = false
+    }
+}
+
+const openChangePasswordModal = async () => {
+  if (!userInfo.value.phone_number) {
+      alert('找不到電話號碼。')
+      return
+  }
+  
+  if (!confirm(`是否要發送驗證碼到 ${userInfo.value.phone_number}?`)) {
+      return
+  }
+
+  isChangePasswordLoading.value = true
+  const token = localStorage.getItem('authToken')
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ phone_number: userInfo.value.phone_number })
+    })
+
+    const data = await response.json()
+
+    if (response.ok && data.code === 0) {
+      //alert(data.msg || '發送驗證碼成功。')
+      alert('發送驗證碼成功。')
+      changePasswordForm.value = { code: '', password: '', confirmPassword: '' }
+      
+      const modalEl = document.getElementById('changePasswordModal')
+      if (modalEl) {
+        changePasswordModalInstance.value = new Modal(modalEl)
+        changePasswordModalInstance.value.show()
+      }
+    } else {
+      const errorMsg = handleApiError(data)
+      //alert(errorMsg || '發送驗證碼失敗。')
+      alert('發送驗證碼失敗。')
+    }
+  } catch (error) {
+    console.error('Send Code Error:', error)
+    alert('發生錯誤，請稍後再試。')
+  } finally {
+    isChangePasswordLoading.value = false
+  }
+}
+
+const handleChangePasswordSubmit = async () => {
+    const { code, password, confirmPassword } = changePasswordForm.value
+    
+    if (!code || !password || !confirmPassword) {
+        alert('請填寫所有欄位。')
+        return
+    }
+    
+    if (code.length !== 6) {
+      alert('請輸入6位數的驗證碼。')
+      return
+    }
+
+    if (password !== confirmPassword) {
+        alert('密碼不一致。')
+        return
+    }
+
+    if (password.length < 8) {
+        alert('密碼至少需要8位。')
+        return
+    }
+
+    isChangePasswordLoading.value = true
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                phone_number: userInfo.value.phone_number,
+                verification_code: code,
+                password: password,
+                password_confirmation: confirmPassword
+            })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            //alert(data.msg || '修改密碼成功。')
+            alert('修改密碼成功。')
+            if (changePasswordModalInstance.value) {
+                changePasswordModalInstance.value.hide()
+            }
+            logout()
+        } else {
+            const errorMsg = handleApiError(data)
+            //alert(errorMsg || '修改密碼失敗。')
+            alert('修改密碼失敗。')
+        }
+    } catch (error) {
+        console.error('Change Password Error:', error)
+        alert('發生錯誤，請稍後再試。')
+    } finally {
+        isChangePasswordLoading.value = false
+    }
+}
+
+//const kycModalInstance = ref(null)
+const sendKYCInitiate = async () => {
+  const token = localStorage.getItem('authToken')
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/kyc/initiate`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+          success_url: `${import.meta.env.BASE_URL}/kyc-info`,
+          error_url: `${import.meta.env.BASE_URL}/account`,
+      })
+    })
+
+    const data = await response.json()
+    console.log(data)
+    if (response.ok && data.code === 0) {
+      alert('KYC 啟動成功!')
+      window.location.href = data.data.redirect_url
+    } else {
+      const errorMsg = handleApiError(data)
+      //alert(errorMsg || 'Failed to initiate KYC.')
+      alert('KYC 啟動失敗。')
+    }
+  } catch (error) {
+    console.error('KYC Error:', error)
+    alert('發生錯誤，請稍後再試。')
+  }
+}
+
+const openEmailModal = () => {
+  emailStep.value = 1
+  emailForm.value = { email: '', code: '' }
+  const modalEl = document.getElementById('emailVerificationModal')
+  if (modalEl) {
+    emailModalInstance.value = new Modal(modalEl)
+    emailModalInstance.value.show()
+  }
+}
+
+const sendEmailCode = async () => {
+  if (!emailForm.value.email) {
+    alert('請輸入您的電子郵件地址。')
+    return
+  }
+  
+  isEmailLoading.value = true
+  const token = localStorage.getItem('authToken')
+  try {
+    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/email/verify', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: emailForm.value.email })
+    })
+
+    const data = await response.json()
+
+    if (response.ok && data.code === 0) {
+      alert('驗證碼已發送到您的電子郵件。')
+      emailStep.value = 2
+    } else {
+      const errorMsg = handleApiError(data)
+      //alert(errorMsg || '發送驗證碼失敗。')
+      alert('發送驗證碼失敗。')
+    }
+  } catch (error) {
+    console.error('Email Verify Error:', error)
+    alert('發生錯誤，請稍後再試。')
+  } finally {
+    isEmailLoading.value = false
+  }
+}
+
+const confirmEmail = async () => {
+  if (!emailForm.value.code) {
+    alert('請輸入驗證碼。')
+    return
+  }
+
+  isEmailLoading.value = true
+  const token = localStorage.getItem('authToken')
+  try {
+    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/email/confirm', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ verification_code: emailForm.value.code })
+    })
+
+    const data = await response.json()
+
+    if (response.ok && data.code === 0) {
+      alert('Email 驗證成功!')
+      // Update local user info
+      if (data.data && data.data.user) {
+        userInfo.value = data.data.user
+      } else {
+        // Fallback if API doesn't return user object as expected, though doc says it does
+        userInfo.value.email = emailForm.value.email
+      }
+      
+      if (emailModalInstance.value) {
+        emailModalInstance.value.hide()
+      }
+    } else {
+      const errorMsg = handleApiError(data)
+      //alert(errorMsg || '驗證失敗。')
+      alert('Email 驗證失敗。')
+    }
+  } catch (error) {
+    console.error('Email Confirm Error:', error)
+    alert('發生錯誤，請稍後再試。')
+  } finally {
+    isEmailLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -314,6 +364,14 @@ onMounted(() => {
           >
             <i class="bi bi-gear me-2"></i> 帳號設定
           </button>
+          <button 
+            type="button" 
+            class="list-group-item list-group-item-action"
+            :class="{ active: activeMenu === 'bank_accounts' }"
+            @click="activeMenu = 'bank_accounts'"
+          >
+            <i class="bi bi-bank me-2"></i> 銀行帳號
+          </button>
         </div>
       </div>
 
@@ -324,6 +382,8 @@ onMounted(() => {
             <h4 class="card-title fw-bold mb-4 border-bottom pb-2">
               <span v-if="activeMenu === 'orders'">即時訂單</span>
               <span v-else-if="activeMenu === 'history'">交易歷程</span>
+
+              <span v-else-if="activeMenu === 'bank_accounts'">銀行帳號</span>
               <span v-else>帳號設定</span>
             </h4>
 
@@ -358,7 +418,7 @@ onMounted(() => {
             <div v-else-if="activeMenu === 'history'">
               <p class="text-muted text-center py-5">尚無交易紀錄</p>
             </div>
-            <div v-else>
+            <div v-else-if="activeMenu === 'settings'">
               <form>
                 <div class="mb-3">
                   <label class="form-label">姓名</label>
@@ -403,6 +463,41 @@ onMounted(() => {
                   </div>
                 </div>
               </form>
+
+            </div>
+            <div v-else-if="activeMenu === 'bank_accounts'">
+                <div v-if="isBankLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div v-else-if="bankAccounts.length === 0" class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i> 目前沒有已啟用的銀行帳號。
+                </div>
+                <div v-else class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>銀行代碼</th>
+                                <th>分行代碼</th>
+                                <th>帳號</th>
+                                <th>狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="bank in bankAccounts" :key="bank.id">
+                                <td>{{ bank.bank_code }}</td>
+                                <td>{{ bank.branch_code }}</td>
+                                <td>{{ bank.account_number }}</td>
+                                <td>
+                                    <span class="badge" :class="bank.status === 2 ? 'bg-success' : 'bg-secondary'">
+                                        {{ bank.status_label }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
           </div>
@@ -421,7 +516,7 @@ onMounted(() => {
           <div class="modal-body text-center py-4">
             <i class="bi bi-shield-check text-primary display-1 mb-3"></i>
             <p class="mb-4 text-muted">
-              To ensure the security of your account and transactions, please complete the identity verification (KYC) process.
+              為了確保您的帳戶和交易的安全，請完成身份驗證 (KYC) 的程序。
             </p>
             <div class="d-grid gap-3">
               <button class="btn btn-primary btn-lg" @click="startKyc" :disabled="isKycLoading">
@@ -429,7 +524,7 @@ onMounted(() => {
                 {{ isKycLoading ? 'Initiating...' : 'Start Verification' }}
               </button>
               <button class="btn btn-outline-secondary" @click="goToKycInfo">
-                I have already completed Jumio verification
+                我已經完成 Jumio 驗證
               </button>
             </div>
           </div>
@@ -493,7 +588,7 @@ onMounted(() => {
             <form @submit.prevent="handleChangePasswordSubmit">
                 <div class="mb-3">
                   <label class="form-label">驗證碼</label>
-                  <input type="text" class="form-control" v-model="changePasswordForm.code" placeholder="請輸入簡訊驗證碼" required>
+                  <input type="text" class="form-control" v-model="changePasswordForm.code" placeholder="請輸入簡訊驗證碼" required length="6">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">新密碼</label>

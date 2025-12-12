@@ -102,4 +102,11 @@ const handleSidebarClick = (route) => {
 .top-15{
   top: 15%;
 }
+
+@media (max-width: 768px) {
+  .workbench-entrance {
+    display: none;
+  }
+}
+
 </style>

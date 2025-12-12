@@ -57,47 +57,60 @@ const handleNavClick = (e) => {
 
     <!-- Main Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
-      <div class="container">
-        <router-link to="/" class="navbar-brand fw-bold text-primary fs-3">幣商</router-link>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+      <div class="container-fluid px-3">
+        <!-- 1. Left: Toggler (Hamburger) -->
+        <button class="navbar-toggler border-0 p-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar">
           <span class="navbar-toggler-icon"></span>
         </button>
 
-        <div class="collapse navbar-collapse" id="mainNavbar">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-semibold">
-            <li class="nav-item">
-              <a class="nav-link active" href="/">首頁</a>
-            </li>
-            <!--<li class="nav-item">
-              <a class="nav-link active" href="#" @click="handleNavClick">Card</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#" @click="handleNavClick">Direct Top-Up</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#" @click="handleNavClick">Mobile Reload</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="#" @click="handleNavClick">Gift Card</a>
-            </li>-->
-          </ul>
-          
-          <form class="d-flex w-50 mx-lg-4" role="search">
-            <div class="input-group">
-              <input class="form-control border-end-0" type="search" placeholder="搜尋遊戲" aria-label="Search">
-              <span class="input-group-text bg-white border-start-0">
-                <i class="bi bi-search"></i>
-              </span>
-            </div>
-          </form>
+        <!-- 2. Center: Brand (Logo) -->
+        <router-link to="/" class="navbar-brand fw-bold text-primary fs-3 mx-auto">幣商</router-link>
 
-          <div class="d-flex align-items-center gap-3 mt-3 mt-lg-0">
-             <a href="#" class="text-dark fs-5 position-relative">
-               <i class="bi bi-cart"></i>
-               <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
-                 0
-               </span>
-             </a>
+        <!-- 3. Right: Login/Account Icon (Mobile Only) -->
+        <div class="d-lg-none">
+            <template v-if="!isLoggedIn">
+                <router-link to="/login" class="text-dark fs-4"><i class="bi bi-person"></i></router-link>
+            </template>
+            <template v-else>
+                <router-link to="/account" class="text-dark fs-4"><i class="bi bi-person-check"></i></router-link>
+            </template>
+        </div>
+
+        <!-- Offcanvas Menu (Mobile) / Collapse (Desktop) -->
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title fw-bold text-primary" id="offcanvasNavbarLabel">幣商</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 fw-semibold">
+              <li class="nav-item">
+                <a class="nav-link active" href="/">首頁</a>
+              </li>
+              <!-- Mobile Only Menu Items -->
+               <li class="nav-item d-lg-none" v-if="isLoggedIn">
+                  <a href="#" @click.prevent="logout" class="nav-link text-danger">登出</a>
+               </li>
+            </ul>
+            
+            <form class="d-flex w-50 mx-lg-4 d-none d-lg-flex" role="search">
+              <div class="input-group">
+                <input class="form-control border-end-0" type="search" placeholder="搜尋遊戲" aria-label="Search">
+                <span class="input-group-text bg-white border-start-0">
+                  <i class="bi bi-search"></i>
+                </span>
+              </div>
+            </form>
+
+            <!-- Desktop Right Actions -->
+            <div class="d-none d-lg-flex align-items-center gap-3">
+               <a href="#" class="text-dark fs-5 position-relative">
+                 <i class="bi bi-cart"></i>
+                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
+                   0
+                 </span>
+               </a>
+            </div>
           </div>
         </div>
       </div>
