@@ -220,8 +220,8 @@ const sendKYCInitiate = async () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-          success_url: `${import.meta.env.BASE_URL}/kyc-info`,
-          error_url: `${import.meta.env.BASE_URL}/account`,
+          success_url: `${import.meta.env.VITE_FRONTEND_BASE_URL}/kyc-info`,
+          error_url: `${import.meta.env.VITE_FRONTEND_BASE_URL}/account`,
       })
     })
 
