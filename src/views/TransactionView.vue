@@ -1,13 +1,60 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-const transactionType = computed(() => route.query.type === 'sell' ? 'Sell' : 'Buy')
+const txType = ref(route.query.type === 'sell' ? 'sell' : 'buy')
+const transactionType = computed(() => txType.value === 'sell' ? 'Sell' : 'Buy')
 const gameName = computed(() => route.query.game || 'Unknown Game')
 
-// Mock Exchange Rate: 1 TWD = 100 Game Currency
-const exchangeRate = 100
+const toggleTransactionType = (type) => {
+  if (txType.value !== type) {
+    txType.value = type
+    // Refresh rate when type changes
+    fetchStoreDetails()
+  }
+}
+
+
+// Rate from API
+const exchangeRate = ref(0)
+const storeDetails = ref(null)
+
+const fetchStoreDetails = async () => {
+    const storeId = route.query.storeId
+    if (!storeId) return
+
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stores/${storeId}`)
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            storeDetails.value = data.data.store
+            // Assume first point type for now as per requirement context, or logic to select point?
+            // Requirement just says "get buy/sell rate". I'll take the first point's rates.
+            if (storeDetails.value.points && storeDetails.value.points.length > 0) {
+                const point = storeDetails.value.points[0]
+                if (txType.value === 'sell') {
+                     // Selling: User sells Game Currency -> Gets TWD?
+                     // Rate definition: "buying_rate": 10.0 (Dealer buys?), "selling_rate": 10.0 (Dealer sells?)
+                     // Usually "Buying Rate" = Dealer buys from User. "Selling Rate" = Dealer sells to User.
+                     // Let's assume:
+                     // User Buy Currency (Dealer Sell) -> Use selling_rate
+                     // User Sell Currency (Dealer Buy) -> Use buying_rate
+                     exchangeRate.value = point.buying_rate // Dealer's buying rate
+                } else {
+                     exchangeRate.value = point.selling_rate // Dealer's selling rate
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Fetch Store Details Error:', error)
+    }
+}
+
+onMounted(() => {
+    fetchStoreDetails()
+})
 
 const twdAmount = ref(0)
 const gameCurrencyAmount = ref(0)
@@ -28,17 +75,25 @@ const termsChecked2 = ref(false)
 const otpCode = ref('')
 
 // Bidirectional Conversion
+// Bidirectional Conversion
 watch(twdAmount, (newVal) => {
   if (isUpdating.value) return
   isUpdating.value = true
-  gameCurrencyAmount.value = newVal * exchangeRate
+  if (exchangeRate.value === 0) return
+  // Calculate game currency
+  const calculated = newVal * exchangeRate.value
+  // Requirement: "Input finished then convert". lazy handles input finish.
+  // "Do not show decimal points first". If result is integer, show integer.
+  gameCurrencyAmount.value = Number.isInteger(calculated) ? calculated : Number(calculated.toFixed(2))
   isUpdating.value = false
 })
 
 watch(gameCurrencyAmount, (newVal) => {
   if (isUpdating.value) return
   isUpdating.value = true
-  twdAmount.value = newVal / exchangeRate
+  if (exchangeRate.value === 0) return
+  const calculated = newVal / exchangeRate.value
+  twdAmount.value = Number.isInteger(calculated) ? calculated : Number(calculated.toFixed(2))
   isUpdating.value = false
 })
 
@@ -68,8 +123,16 @@ const submitOrder = () => {
     <div class="row justify-content-center">
       <div class="col-lg-8">
         <div class="card shadow-lg border-0">
-          <div class="card-header bg-primary text-white text-center py-3">
-            <h4 class="mb-0 fw-bold">{{ transactionType }} {{ gameName }} Currency</h4>
+          <div class="card-header bg-white text-center py-3 border-bottom">
+            <h4 class="mb-3 fw-bold">{{ gameName }} Currency</h4>
+            
+            <div class="btn-group w-50" role="group">
+                <input type="radio" class="btn-check" name="btnradio" id="btnradio1" autocomplete="off" :checked="txType === 'buy'" @change="toggleTransactionType('buy')">
+                <label class="btn btn-outline-primary" for="btnradio1">Buy (買)</label>
+
+                <input type="radio" class="btn-check" name="btnradio" id="btnradio2" autocomplete="off" :checked="txType === 'sell'" @change="toggleTransactionType('sell')">
+                <label class="btn btn-outline-danger" for="btnradio2">Sell (賣)</label>
+            </div>
           </div>
           <div class="card-body p-5">
             
@@ -92,7 +155,7 @@ const submitOrder = () => {
                 <label class="form-label fw-bold">TWD Amount (台幣)</label>
                 <div class="input-group">
                   <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" v-model="twdAmount" min="0">
+                  <input type="number" class="form-control" v-model.lazy="twdAmount" min="0">
                 </div>
               </div>
               <div class="col-md-2 text-center text-muted">
@@ -101,7 +164,7 @@ const submitOrder = () => {
               <div class="col-md-5">
                 <label class="form-label fw-bold">Game Currency (遊戲幣)</label>
                 <div class="input-group">
-                  <input type="number" class="form-control" v-model="gameCurrencyAmount" min="0">
+                  <input type="number" class="form-control" v-model.lazy="gameCurrencyAmount" min="0">
                   <span class="input-group-text">Coins</span>
                 </div>
               </div>

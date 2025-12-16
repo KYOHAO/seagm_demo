@@ -1,4 +1,8 @@
 <script setup>
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
 defineProps({
   title: {
     type: String,
@@ -16,6 +20,13 @@ defineProps({
     ]
   }
 })
+
+
+const emit = defineEmits(['game-click'])
+
+const handleGameClick = (game) => {
+  emit('game-click', game)
+}
 </script>
 
 <template>
@@ -28,7 +39,7 @@ defineProps({
       
       <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3">
         <div class="col" v-for="item in items" :key="item.id">
-          <div class="card h-100 border-0 shadow-sm hover-card">
+          <div class="card h-100 border-0 shadow-sm hover-card" @click="handleGameClick(item)">
             <img :src="item.image" class="card-img-top rounded-top" :alt="item.name">
             <div class="card-body p-2 text-center">
               <h6 class="card-title text-truncate mb-1" :title="item.name">{{ item.name }}</h6>

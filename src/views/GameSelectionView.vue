@@ -4,20 +4,36 @@ import { Modal } from 'bootstrap'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const games = ref([
-  { id: 1, name: 'Genshin Impact', image: 'https://placehold.co/600x400?text=Genshin+Impact' },
-  { id: 2, name: 'Honkai: Star Rail', image: 'https://placehold.co/600x400?text=Honkai+Star+Rail' },
-  { id: 3, name: 'League of Legends', image: 'https://placehold.co/600x400?text=League+of+Legends' },
-  { id: 4, name: 'Valorant', image: 'https://placehold.co/600x400?text=Valorant' },
-  { id: 5, name: 'PUBG Mobile', image: 'https://placehold.co/600x400?text=PUBG+Mobile' },
-  { id: 6, name: 'Mobile Legends', image: 'https://placehold.co/600x400?text=Mobile+Legends' },
-])
+const games = ref([])
+const isLoading = ref(false)
+
+const fetchGames = async () => {
+    isLoading.value = true
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stores`)
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            games.value = data.data.stores.map((store, index) => ({
+                id: store.id,
+                name: store.name,
+                image: `https://picsum.photos/600/400?random=${index + 1}` // Random image
+            }))
+        } else {
+            console.error('Failed to fetch stores:', data)
+        }
+    } catch (error) {
+        console.error('Fetch Stores Error:', error)
+    } finally {
+        isLoading.value = false
+    }
+}
 
 const selectedGame = ref(null)
 let modalInstance = null
 
 onMounted(() => {
   modalInstance = new Modal(document.getElementById('actionModal'))
+  fetchGames()
 })
 
 const openModal = (game) => {
@@ -31,7 +47,8 @@ const handleAction = (actionType) => {
     path: '/transaction',
     query: {
       type: actionType === 'Buy Currency' ? 'buy' : 'sell',
-      game: selectedGame.value.name
+      game: selectedGame.value.name,
+      storeId: selectedGame.value.id
     }
   })
 }

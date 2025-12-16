@@ -28,6 +28,44 @@ const changePasswordForm = ref({
   password: '',
   confirmPassword: ''
 })
+const addBankModalInstance = ref(null)
+const isAddBankLoading = ref(false)
+const addBankForm = ref({
+    bank_code: '',
+    branch_code: '',
+    account_number: '',
+    verification_code: ''
+})
+const bankStep = ref(1)
+const bankAccountId = ref('')
+const gameAccounts = ref([])
+const isGameAccountsLoading = ref(false)
+const addGameModalInstance = ref(null)
+const isAddGameLoading = ref(false)
+const addGameForm = ref({
+    store_id: '',
+    account_name: '',
+    verification_code: ''
+})
+const gameStep = ref(1)
+const newGameAccountId = ref('')
+
+const historyTab = ref('buying')
+const buyingOrders = ref([])
+const sellingOrders = ref([])
+const buyingPagination = ref({
+    current_page: 1,
+    per_page: 15,
+    total: 0,
+    last_page: 1
+})
+const sellingPagination = ref({
+    current_page: 1,
+    per_page: 15,
+    total: 0,
+    last_page: 1
+})
+const isHistoryLoading = ref(false)
 
 onMounted(() => {
     fetchUserInfo()
@@ -39,8 +77,100 @@ import { watch } from 'vue'
 watch(activeMenu, (newVal) => {
     if (newVal === 'bank_accounts') {
         fetchBankAccounts()
+    } else if (newVal === 'game_accounts') {
+        fetchGameAccounts()
+        fetchGameStores()
+    } else if (newVal === 'history') {
+        if (historyTab.value === 'buying') {
+            fetchBuyingOrders()
+        } else {
+            fetchSellingOrders()
+        }
     }
 })
+
+watch(historyTab, (newVal) => {
+    if (newVal === 'buying') {
+        fetchBuyingOrders()
+    } else {
+        fetchSellingOrders()
+    }
+})
+
+const gameStores = ref([])
+const fetchGameStores = async () => {
+    const token = localStorage.getItem('authToken')
+    if (!token) return
+
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stores`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            gameStores.value = data.data.stores
+        } else {
+            console.error('Failed to fetch game stores:', data)
+        }
+    } catch (error) {
+        console.error('Fetch Game Stores Error:', error)
+    }
+}
+
+const getStoreName = (storeId) => {
+    const store = gameStores.value.find(s => s.id === storeId)
+    return store ? store.name : storeId
+}
+
+
+
+const fetchBuyingOrders = async (page = 1) => {
+    isHistoryLoading.value = true
+    const token = localStorage.getItem('authToken')
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/orders/buying?page=${page}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            buyingOrders.value = data.data.orders
+            buyingPagination.value = data.data.pagination
+        } else {
+            console.error('Fetch Buying Orders Failed:', data)
+        }
+    } catch (error) {
+        console.error('Fetch Buying Orders Error:', error)
+    } finally {
+        isHistoryLoading.value = false
+    }
+}
+
+const fetchSellingOrders = async (page = 1) => {
+    isHistoryLoading.value = true
+    const token = localStorage.getItem('authToken')
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling?page=${page}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            sellingOrders.value = data.data.orders
+            sellingPagination.value = data.data.pagination
+        } else {
+             console.error('Fetch Selling Orders Failed:', data)
+        }
+    } catch (error) {
+        console.error('Fetch Selling Orders Error:', error)
+    } finally {
+        isHistoryLoading.value = false
+    }
+}
 
 const fetchUserInfo = async () => {
     const token = localStorage.getItem('authToken')
@@ -102,6 +232,256 @@ const fetchBankAccounts = async () => {
         isBankLoading.value = false
     }
 }
+
+const fetchGameAccounts = async () => {
+    isGameAccountsLoading.value = true
+    const token = localStorage.getItem('authToken')
+    if (!token) return
+
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/game-account`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            gameAccounts.value = data.data.game_accounts
+        } else {
+            console.error('Failed to fetch game accounts:', data)
+        }
+    } catch (error) {
+        console.error('Fetch Game Accounts Error:', error)
+    } finally {
+        isGameAccountsLoading.value = false
+    }
+
+}
+
+const openAddGameModal = () => {
+    if(userInfo.value.kyc_level !== 2) {
+        alert('請先完成身分驗證')
+        return
+    }
+
+    gameStep.value = 1
+    addGameForm.value = { store_id: '', account_name: '', verification_code: '' }
+    const modalEl = document.getElementById('addGameModal')
+    if (modalEl) {
+        addGameModalInstance.value = new Modal(modalEl)
+        addGameModalInstance.value.show()
+    }
+}
+
+const handleAddGameSubmit = async () => {
+    const { store_id, account_name } = addGameForm.value
+
+    if (!store_id || !account_name) {
+        alert('請填寫所有欄位。')
+        return
+    }
+
+    isAddGameLoading.value = true
+    const token = localStorage.getItem('authToken')
+    
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/bind`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                store_id,
+                account_name
+            })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            alert('遊戲帳號綁定申請成功！驗證碼已發送。')
+            newGameAccountId.value = data.data.game_account.id
+            gameStep.value = 2
+        } else {
+             const errorMsg = handleApiError(data)
+             //alert(errorMsg || '綁定失敗。')
+             alert('綁定失敗。')
+        }
+    } catch (error) {
+        console.error('Bind Game Account Error:', error)
+        alert('發生錯誤，請稍後再試。')
+    } finally {
+        isAddGameLoading.value = false
+    }
+}
+
+const handleGameVerifySubmit = async () => {
+    if (!addGameForm.value.verification_code || addGameForm.value.verification_code.length !== 6) {
+        alert('請輸入6位數驗證碼。')
+        return
+    }
+    
+    isAddGameLoading.value = true
+    const token = localStorage.getItem('authToken')
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/verify`, {
+            method: 'POST',
+            headers: {
+                 'Authorization': `Bearer ${token}`,
+                 'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                game_account_id: newGameAccountId.value,
+                verification_code: addGameForm.value.verification_code
+            })
+        })
+        
+        const data = await response.json()
+        
+        if (response.ok && data.code === 0) {
+            alert('遊戲帳號綁定成功！')
+             if (addGameModalInstance.value) {
+                addGameModalInstance.value.hide()
+            }
+            fetchGameAccounts()
+        } else {
+            const errorMsg = handleApiError(data)
+            //alert(errorMsg || '驗證失敗。')
+            alert('驗證失敗。')
+        }
+    } catch (error) {
+        console.error('Verify Game Account Error:', error)
+          alert('發生錯誤，請稍後再試。')
+    } finally {
+        isAddGameLoading.value = false
+    }
+}
+
+const openAddBankModal = () => {
+    if(userInfo.value.kyc_level !== 2) {
+        alert('請先完成身分驗證')
+        return
+    }
+
+
+
+    bankStep.value = 1
+    addBankForm.value = { bank_code: '', branch_code: '', account_number: '', verification_code: '' }
+    const modalEl = document.getElementById('addBankModal')
+    if (modalEl) {
+        addBankModalInstance.value = new Modal(modalEl)
+        addBankModalInstance.value.show()
+    }
+}
+
+const handleAddBankSubmit = async () => {
+    const { bank_code, branch_code, account_number } = addBankForm.value
+    
+    if (!bank_code || !branch_code || !account_number) {
+        alert('請填寫所有欄位。')
+        return
+    }
+    
+    // Basic validation
+    if (bank_code.length !== 3) {
+        alert('銀行代碼必須為3碼。')
+        return
+    }
+    if (branch_code.length !== 4) {
+        alert('分行代碼必須為4碼。')
+        return
+    }
+
+
+    if (account_number.length > 14) {
+         alert('銀行帳號最多14碼。')
+         return
+    }
+
+    isAddBankLoading.value = true
+    const token = localStorage.getItem('authToken')
+    
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                bank_code,
+                branch_code,
+                account_number
+            })
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            alert('銀行帳號綁定申請成功！驗證碼已發送。')
+            bankAccountId.value = data.data.bank_account.id
+            bankStep.value = 2
+        } else {
+             const errorMsg = handleApiError(data)
+             //alert(errorMsg || '綁定失敗。')
+             alert('綁定失敗。')
+        }
+    } catch (error) {
+        console.error('Bind Bank Account Error:', error)
+        alert('發生錯誤，請稍後再試。')
+    } finally {
+        isAddBankLoading.value = false
+
+    }
+}
+
+const handleBankVerifySubmit = async () => {
+    if (!addBankForm.value.verification_code || addBankForm.value.verification_code.length !== 6) {
+        alert('請輸入6位數驗證碼。')
+        return
+    }
+    
+    isAddBankLoading.value = true
+    const token = localStorage.getItem('authToken')
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/verify`, {
+            method: 'POST',
+            headers: {
+                 'Authorization': `Bearer ${token}`,
+                 'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                bank_account_id: bankAccountId.value,
+                verification_code: addBankForm.value.verification_code
+            })
+        })
+        
+        const data = await response.json()
+        
+        if (response.ok && data.code === 0) {
+            alert('銀行帳號驗證成功，請等待審核。')
+             if (addBankModalInstance.value) {
+                addBankModalInstance.value.hide()
+            }
+            fetchBankAccounts()
+        } else {
+            const errorMsg = handleApiError(data)
+            //alert(errorMsg || '驗證失敗。')
+            alert('驗證失敗。')
+        }
+    } catch (error) {
+        console.error('Verify Bank Error:', error)
+          alert('發生錯誤，請稍後再試。')
+    } finally {
+        isAddBankLoading.value = false
+    }
+}
+
 
 const openChangePasswordModal = async () => {
   if (!userInfo.value.phone_number) {
@@ -242,6 +622,11 @@ const sendKYCInitiate = async () => {
 }
 
 const openEmailModal = () => {
+  if(userInfo.value.kyc_level !== 2) {
+      alert('請先完成身分驗證')
+      return
+  }
+  
   emailStep.value = 1
   emailForm.value = { email: '', code: '' }
   const modalEl = document.getElementById('emailVerificationModal')
@@ -372,6 +757,14 @@ const confirmEmail = async () => {
           >
             <i class="bi bi-bank me-2"></i> 銀行帳號
           </button>
+          <button 
+            type="button" 
+            class="list-group-item list-group-item-action"
+            :class="{ active: activeMenu === 'game_accounts' }"
+            @click="activeMenu = 'game_accounts'"
+          >
+            <i class="bi bi-controller me-2"></i> 遊戲帳號
+          </button>
         </div>
       </div>
 
@@ -384,6 +777,7 @@ const confirmEmail = async () => {
               <span v-else-if="activeMenu === 'history'">交易歷程</span>
 
               <span v-else-if="activeMenu === 'bank_accounts'">銀行帳號</span>
+              <span v-else-if="activeMenu === 'game_accounts'">遊戲帳號</span>
               <span v-else>帳號設定</span>
             </h4>
 
@@ -416,7 +810,112 @@ const confirmEmail = async () => {
               </div>
             </div>
             <div v-else-if="activeMenu === 'history'">
-              <p class="text-muted text-center py-5">尚無交易紀錄</p>
+              <!-- History Tabs -->
+              <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                  <a class="nav-link" :class="{ active: historyTab === 'buying' }" href="#" @click.prevent="historyTab = 'buying'">購買訂單</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" :class="{ active: historyTab === 'selling' }" href="#" @click.prevent="historyTab = 'selling'">銷售訂單</a>
+                </li>
+              </ul>
+
+              <div v-if="isHistoryLoading" class="text-center py-5">
+                  <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                  </div>
+              </div>
+              
+              <!-- Buying Orders -->
+              <div v-else-if="historyTab === 'buying'">
+                  <div v-if="buyingOrders.length === 0" class="alert alert-secondary">尚無購買紀錄</div>
+                  <div v-else class="table-responsive">
+                      <table class="table table-hover align-middle small">
+                          <thead class="table-light">
+                              <tr>
+                                  <th>訂單 ID</th>
+                                  <th>商戶</th>
+                                  <th>數量</th>
+                                  <th>總價</th>
+                                  <th>付款方式</th>
+                                  <th>狀態</th>
+                                  <th>時間</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr v-for="order in buyingOrders" :key="order.id">
+                                  <td>{{ order.id }}</td>
+                                  <td>{{ getStoreName(order.store_id) }}</td>
+                                  <td>{{ order.quantity }}</td>
+                                  <td>{{ order.total_price }}</td>
+                                  <td>
+                                      {{ order.payments_label }}
+                                      <span v-if="order.payments_sub" class="badge bg-light text-dark">{{ order.payments_sub }}</span>
+                                  </td>
+                                  <td><span class="badge bg-secondary">{{ order.status_label }}</span></td>
+                                  <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+                  <!-- Pagination -->
+                  <nav v-if="buyingPagination.last_page > 1" class="mt-3">
+                      <ul class="pagination justify-content-center">
+                          <li class="page-item" :class="{ disabled: buyingPagination.current_page === 1 }">
+                              <button class="page-link" @click="fetchBuyingOrders(buyingPagination.current_page - 1)">上一頁</button>
+                          </li>
+                          <li class="page-item disabled">
+                              <span class="page-link">{{ buyingPagination.current_page }} / {{ buyingPagination.last_page }}</span>
+                          </li>
+                          <li class="page-item" :class="{ disabled: buyingPagination.current_page === buyingPagination.last_page }">
+                              <button class="page-link" @click="fetchBuyingOrders(buyingPagination.current_page + 1)">下一頁</button>
+                          </li>
+                      </ul>
+                  </nav>
+              </div>
+
+              <!-- Selling Orders -->
+              <div v-else-if="historyTab === 'selling'">
+                  <div v-if="sellingOrders.length === 0" class="alert alert-secondary">尚無銷售紀錄</div>
+                   <div v-else class="table-responsive">
+                      <table class="table table-hover align-middle small">
+                          <thead class="table-light">
+                              <tr>
+                                  <th>訂單 ID</th>
+                                  <th>商戶</th>
+                                  <th>數量</th>
+                                  <th>總價</th>
+                                  <th>狀態</th>
+                                  <th>時間</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr v-for="order in sellingOrders" :key="order.id">
+                                  <td>{{ order.id }}</td>
+                                  <td>{{ getStoreName(order.store_id) }}</td>
+                                  <td>{{ order.quantity }}</td>
+                                  <td>{{ order.total_price }}</td>
+                                  <td><span class="badge bg-secondary">{{ order.status_label }}</span></td>
+                                  <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+                  <!-- Pagination -->
+                   <nav v-if="sellingPagination.last_page > 1" class="mt-3">
+                      <ul class="pagination justify-content-center">
+                          <li class="page-item" :class="{ disabled: sellingPagination.current_page === 1 }">
+                              <button class="page-link" @click="fetchSellingOrders(sellingPagination.current_page - 1)">上一頁</button>
+                          </li>
+                          <li class="page-item disabled">
+                              <span class="page-link">{{ sellingPagination.current_page }} / {{ sellingPagination.last_page }}</span>
+                          </li>
+                          <li class="page-item" :class="{ disabled: sellingPagination.current_page === sellingPagination.last_page }">
+                              <button class="page-link" @click="fetchSellingOrders(sellingPagination.current_page + 1)">下一頁</button>
+                          </li>
+                      </ul>
+                  </nav>
+              </div>
             </div>
             <div v-else-if="activeMenu === 'settings'">
               <form>
@@ -466,6 +965,12 @@ const confirmEmail = async () => {
 
             </div>
             <div v-else-if="activeMenu === 'bank_accounts'">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 fw-bold">我的銀行帳號</h5>
+                    <button class="btn btn-primary btn-sm" @click="openAddBankModal">
+                        <i class="bi bi-plus-lg me-1"></i> 新增銀行帳號
+                    </button>
+                </div>
                 <div v-if="isBankLoading" class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
@@ -492,6 +997,44 @@ const confirmEmail = async () => {
                                 <td>
                                     <span class="badge" :class="bank.status === 2 ? 'bg-success' : 'bg-secondary'">
                                         {{ bank.status_label }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div v-else-if="activeMenu === 'game_accounts'">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 fw-bold">我的遊戲帳號</h5>
+                    <button class="btn btn-primary btn-sm" @click="openAddGameModal">
+                        <i class="bi bi-plus-lg me-1"></i> 新增遊戲帳號
+                    </button>
+                </div>
+                <div v-if="isGameAccountsLoading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <div v-else-if="gameAccounts.length === 0" class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i> 目前沒有已綁定的遊戲帳號。
+                </div>
+                <div v-else class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>商戶名稱</th>
+                                <th>帳號名稱</th>
+                                <th>狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="account in gameAccounts" :key="account.id">
+                                <td>{{ getStoreName(account.store_id) }}</td>
+                                <td>{{ account.account_name }}</td>
+                                <td>
+                                    <span class="badge" :class="account.status === 1 ? 'bg-success' : 'bg-secondary'">
+                                        {{ account.status_label }}
                                     </span>
                                 </td>
                             </tr>
@@ -605,6 +1148,101 @@ const confirmEmail = async () => {
                   </button>
                 </div>
             </form>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- Add Bank Account Modal -->
+    <div class="modal fade" id="addBankModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">新增銀行帳號</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-4">
+             <form v-if="bankStep === 1" @submit.prevent="handleAddBankSubmit">
+                <div class="mb-3">
+                  <label class="form-label">銀行代碼 (Bank Code)</label>
+                  <input type="text" class="form-control" v-model="addBankForm.bank_code" placeholder="共3碼 (例如 013)" maxlength="3" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">分行代碼 (Branch Code)</label>
+                  <input type="text" class="form-control" v-model="addBankForm.branch_code" placeholder="共4碼 (例如 1234)" maxlength="4" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">銀行帳號 (Account Number)</label>
+                  <input type="text" class="form-control" v-model="addBankForm.account_number" placeholder="最多14碼" maxlength="14" required>
+                </div>
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary" :disabled="isAddBankLoading">
+                    <span v-if="isAddBankLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    {{ isAddBankLoading ? 'Processing...' : '確認新增' }}
+                  </button>
+                </div>
+             </form>
+             <form v-else @submit.prevent="handleBankVerifySubmit">
+                <div class="mb-3 text-center">
+                    <p class="text-muted">請輸入發送至您手機的驗證碼</p>
+                    <input type="text" class="form-control text-center fs-4" v-model="addBankForm.verification_code" placeholder="------" maxlength="6" required>
+                </div>
+                 <div class="d-grid">
+                  <button type="submit" class="btn btn-success" :disabled="isAddBankLoading">
+                    <span v-if="isAddBankLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    {{ isAddBankLoading ? 'Verify & Bind' : '確認綁定' }}
+                  </button>
+                </div>
+             </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Game Account Modal -->
+    <div class="modal fade" id="addGameModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">新增遊戲帳號</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-4">
+             <form v-if="gameStep === 1" @submit.prevent="handleAddGameSubmit">
+                <div class="mb-3">
+                  <label class="form-label">選擇遊戲商戶</label>
+                  <select class="form-select" v-model="addGameForm.store_id" required>
+                      <option value="" disabled>請選擇商戶</option>
+                      <option v-for="store in gameStores" :key="store.id" :value="store.id">
+                          {{ store.name }}
+                      </option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">帳號名稱 (Account Name)</label>
+                  <input type="text" class="form-control" v-model="addGameForm.account_name" placeholder="請輸入遊戲帳號名稱" maxlength="60" required>
+                </div>
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary" :disabled="isAddGameLoading">
+                    <span v-if="isAddGameLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    {{ isAddGameLoading ? 'Processing...' : '確認新增' }}
+                  </button>
+                </div>
+             </form>
+             <form v-else @submit.prevent="handleGameVerifySubmit">
+                <div class="mb-3 text-center">
+                    <p class="text-muted">請輸入發送至您手機的驗證碼</p>
+                    <input type="text" class="form-control text-center fs-4" v-model="addGameForm.verification_code" placeholder="------" maxlength="6" required>
+                </div>
+                 <div class="d-grid">
+                  <button type="submit" class="btn btn-success" :disabled="isAddGameLoading">
+                    <span v-if="isAddGameLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    {{ isAddGameLoading ? 'Verify & Bind' : '確認綁定' }}
+                  </button>
+                </div>
+             </form>
           </div>
         </div>
       </div>
