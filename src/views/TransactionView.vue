@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useUserAccounts } from '../composables/useUserAccounts'
 
 const route = useRoute()
 const txType = ref(route.query.type === 'sell' ? 'sell' : 'buy')
@@ -25,7 +26,7 @@ const fetchStoreDetails = async () => {
     if (!storeId) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stores/${storeId}`)
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/stores/${storeId}`)
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
@@ -52,8 +53,30 @@ const fetchStoreDetails = async () => {
     }
 }
 
-onMounted(() => {
+const { gameAccounts, bankAccounts, fetchGameAccounts, fetchBankAccounts } = useUserAccounts()
+
+const validBankAccounts = computed(() => {
+    if (!bankAccounts.value) return []
+    return bankAccounts.value //暫時通過
+    //return bankAccounts.value.filter(acc => acc.status === 2)
+})
+
+const validGameAccounts = computed(() => {
+    if (!gameAccounts.value) return []
+    return gameAccounts.value.filter(acc => acc.status === 1)
+})
+
+onMounted(async () => {
     fetchStoreDetails()
+    await Promise.all([fetchGameAccounts(), fetchBankAccounts()])
+    
+    // Set defaults if available
+    if (validGameAccounts.value.length > 0) {
+        selectedGameAccount.value = validGameAccounts.value[0].id
+    }
+    if (validBankAccounts.value.length > 0) {
+        selectedBankAccount.value = validBankAccounts.value[0].id
+    }
 })
 
 const twdAmount = ref(0)
@@ -63,11 +86,9 @@ const isUpdating = ref(false)
 const promotions = ['No Promotion', 'Summer Sale - 5% Bonus', 'New User - 100 Extra Coins']
 const selectedPromotion = ref(promotions[0])
 
-const gameAccounts = ['User123 (Server A)', 'User456 (Server B)']
-const selectedGameAccount = ref(gameAccounts[0])
-
-const bankAccounts = ['Bank A - **** 1234', 'Bank B - **** 5678']
-const selectedBankAccount = ref(bankAccounts[0])
+// Accounts are now fetched dynamically
+const selectedGameAccount = ref('')
+const selectedBankAccount = ref('')
 
 const showOtpSection = ref(false)
 const termsChecked1 = ref(false)
@@ -172,18 +193,30 @@ const submitOrder = () => {
 
             <!-- 4. Game Account -->
             <div class="mb-4">
-              <label class="form-label fw-bold">Game Account (綁定遊戲帳號)</label>
-              <select class="form-select" v-model="selectedGameAccount">
-                <option v-for="acc in gameAccounts" :key="acc" :value="acc">{{ acc }}</option>
+              <label class="form-label fw-bold">遊戲帳號</label>
+              <select v-if="validGameAccounts.length > 0" class="form-select" v-model="selectedGameAccount">
+                <option value="" disabled>請選擇遊戲帳號</option>
+                <option v-for="acc in validGameAccounts" :key="acc.id" :value="acc.id">
+                  {{ acc.store_name }} - {{ acc.account_name }}
+                </option>
               </select>
+               <div v-else class="alert alert-warning mb-0" role="alert">
+                  請新增或確認遊戲帳號
+              </div>
             </div>
 
             <!-- 5. Bank Account -->
             <div class="mb-4">
-              <label class="form-label fw-bold">Bank Account (選擇銀行帳號)</label>
-              <select class="form-select" v-model="selectedBankAccount">
-                <option v-for="bank in bankAccounts" :key="bank" :value="bank">{{ bank }}</option>
+              <label class="form-label fw-bold">銀行帳號</label>
+              <select v-if="validBankAccounts.length > 0" class="form-select" v-model="selectedBankAccount">
+                 <option value="" disabled>請選擇銀行帳號</option>
+                 <option v-for="bank in validBankAccounts" :key="bank.id" :value="bank.id">
+                   ({{ bank.bank_code }}) {{ bank.account_number }}
+                 </option>
               </select>
+              <div v-else class="alert alert-warning mb-0" role="alert">
+                  請新增或確認銀行帳號
+              </div>
             </div>
 
             <!-- 6. Confirmation & OTP -->

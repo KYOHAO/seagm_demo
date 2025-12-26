@@ -16,7 +16,7 @@ export function useAuth() {
         try {
             const token = localStorage.getItem('authToken')
             if (token) {
-                await fetch(`${import.meta.env.VITE_API_BASE_URL}/logout`, {
+                await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/logout`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`

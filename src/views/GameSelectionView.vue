@@ -1,32 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
+import { Modal } from 'bootstrap'
 import { useRouter } from 'vue-router'
+import { useGameStores } from '../composables/useGameStores'
 
 const router = useRouter()
-const games = ref([])
-const isLoading = ref(false)
-
-const fetchGames = async () => {
-    isLoading.value = true
-    try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stores`)
-        const data = await response.json()
-        if (response.ok && data.code === 0) {
-            games.value = data.data.stores.map((store, index) => ({
-                id: store.id,
-                name: store.name,
-                image: `https://picsum.photos/600/400?random=${index + 1}` // Random image
-            }))
-        } else {
-            console.error('Failed to fetch stores:', data)
-        }
-    } catch (error) {
-        console.error('Fetch Stores Error:', error)
-    } finally {
-        isLoading.value = false
-    }
-}
+const { stores: games, isLoading, fetchGameStores: fetchGames } = useGameStores()
 
 const selectedGame = ref(null)
 let modalInstance = null
@@ -78,13 +58,13 @@ const handleAction = (actionType) => {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-center py-4">
-            <p class="text-muted mb-4">Please select an action:</p>
+            <p class="text-muted mb-4">請選擇一個動作:</p>
             <div class="d-grid gap-3">
               <button class="btn btn-success btn-lg" @click="handleAction('Buy Currency')">
-                <i class="bi bi-cart-plus me-2"></i> Buy Game Currency (買遊戲幣)
+                <i class="bi bi-cart-plus me-2"></i> 買遊戲幣
               </button>
               <button class="btn btn-danger btn-lg" @click="handleAction('Sell Currency')">
-                <i class="bi bi-currency-exchange me-2"></i> Sell Game Currency (賣遊戲幣)
+                <i class="bi bi-currency-exchange me-2"></i> 賣遊戲幣
               </button>
             </div>
           </div>

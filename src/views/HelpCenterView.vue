@@ -4,12 +4,12 @@
 <template>
   <div class="container my-5">
     <div class="text-center mb-5">
-      <h1 class="fw-bold text-primary">Help Center</h1>
-      <p class="text-muted">How can we help you today?</p>
+      <h1 class="fw-bold text-primary">幫助中心</h1>
+      <p class="text-muted">我們可以幫到你什麼?</p>
       <div class="row justify-content-center">
         <div class="col-md-6">
           <div class="input-group">
-            <input type="text" class="form-control" placeholder="Search for help topics...">
+            <input type="text" class="form-control" placeholder="搜尋幫助主題...">
             <button class="btn btn-primary" type="button"><i class="bi bi-search"></i></button>
           </div>
         </div>
@@ -24,15 +24,15 @@
           <div class="accordion-item">
             <h2 class="accordion-header" id="headingOne">
               <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                <i class="bi bi-person-circle me-2 text-primary"></i> Account & Profile
+                <i class="bi bi-person-circle me-2 text-primary"></i> 帳號與個人資料
               </button>
             </h2>
             <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#helpAccordion">
               <div class="accordion-body">
                 <ul class="list-group list-group-flush">
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">How to register an account?</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">I forgot my password</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">How to change my email address?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">如何註冊帳號?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">我忘了密碼?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">如何修改我的電子郵件地址?</a></li>
                 </ul>
               </div>
             </div>
@@ -42,15 +42,15 @@
           <div class="accordion-item">
             <h2 class="accordion-header" id="headingTwo">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                <i class="bi bi-credit-card me-2 text-success"></i> Payments & Billing
+                <i class="bi bi-credit-card me-2 text-success"></i> 付款與帳單
               </button>
             </h2>
             <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#helpAccordion">
               <div class="accordion-body">
                 <ul class="list-group list-group-flush">
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">What payment methods are accepted?</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">Why was my payment declined?</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">How to request a refund?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">接受哪些付款方式?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">我的付款被拒絕了?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">如何申請退款?</a></li>
                 </ul>
               </div>
             </div>
@@ -60,15 +60,15 @@
           <div class="accordion-item">
             <h2 class="accordion-header" id="headingThree">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                <i class="bi bi-controller me-2 text-danger"></i> Orders & Delivery
+                <i class="bi bi-controller me-2 text-danger"></i> 訂單與配送
               </button>
             </h2>
             <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#helpAccordion">
               <div class="accordion-body">
                 <ul class="list-group list-group-flush">
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">Where is my order?</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">How to redeem my code?</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">Order status explanation</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">我的訂單在哪?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">如何兌換我的代碼?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">訂單狀態說明</a></li>
                 </ul>
               </div>
             </div>
@@ -78,14 +78,14 @@
           <div class="accordion-item">
             <h2 class="accordion-header" id="headingFour">
               <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-                <i class="bi bi-shield-check me-2 text-warning"></i> Security & Privacy
+                <i class="bi bi-shield-check me-2 text-warning"></i> 安全與隱私
               </button>
             </h2>
             <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#helpAccordion">
               <div class="accordion-body">
                 <ul class="list-group list-group-flush">
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">Is my personal information safe?</a></li>
-                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">Two-factor authentication guide</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">我的個人信息是否安全?</a></li>
+                  <li class="list-group-item"><a href="#" class="text-decoration-none text-secondary">兩步驟驗證指南</a></li>
                 </ul>
               </div>
             </div>

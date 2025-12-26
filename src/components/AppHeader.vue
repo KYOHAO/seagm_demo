@@ -11,7 +11,7 @@ const handleNavClick = (e) => {
     router.push('/login')
   } else {
     // For now, just show an alert or do nothing as these pages don't exist
-    alert('Feature coming soon!')
+    alert('功能尚未完成!')
   }
 }
 </script>

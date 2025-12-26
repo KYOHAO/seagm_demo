@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
+import { useGameStores } from '../composables/useGameStores'
 import { handleApiError } from '../utils/apiError'
 import { useAuth } from '../composables/useAuth'
 
@@ -14,6 +15,7 @@ const stats = ref({
   balance: 0
 })
 const userInfo = ref({})
+const kycPromptModalInstance = ref(null)
 const emailModalInstance = ref(null)
 const emailStep = ref(1)
 const emailForm = ref({
@@ -38,6 +40,10 @@ const addBankForm = ref({
 })
 const bankStep = ref(1)
 const bankAccountId = ref('')
+const bankList = ref([])
+const branchList = ref([])
+const isBankListLoading = ref(false)
+const isBranchListLoading = ref(false)
 const gameAccounts = ref([])
 const isGameAccountsLoading = ref(false)
 const addGameModalInstance = ref(null)
@@ -97,31 +103,7 @@ watch(historyTab, (newVal) => {
     }
 })
 
-const gameStores = ref([])
-const fetchGameStores = async () => {
-    const token = localStorage.getItem('authToken')
-    if (!token) return
-
-    try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/stores`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        })
-
-        const data = await response.json()
-
-        if (response.ok && data.code === 0) {
-            gameStores.value = data.data.stores
-        } else {
-            console.error('Failed to fetch game stores:', data)
-        }
-    } catch (error) {
-        console.error('Fetch Game Stores Error:', error)
-    }
-}
+const { stores: gameStores, fetchGameStores } = useGameStores()
 
 const getStoreName = (storeId) => {
     const store = gameStores.value.find(s => s.id === storeId)
@@ -134,7 +116,7 @@ const fetchBuyingOrders = async (page = 1) => {
     isHistoryLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/orders/buying?page=${page}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/buying?page=${page}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()
@@ -155,7 +137,7 @@ const fetchSellingOrders = async (page = 1) => {
     isHistoryLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling?page=${page}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling?page=${page}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
         const data = await response.json()
@@ -177,7 +159,7 @@ const fetchUserInfo = async () => {
     if (!token) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/me`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -189,6 +171,19 @@ const fetchUserInfo = async () => {
 
         if (response.ok && data.code === 0) {
             userInfo.value = data.data.user
+            
+            // Auto Prompt for KYC if level is 1
+            if (userInfo.value.kyc_level === 1) {
+                // Ensure DOM is ready or wait nextTick if needed, but usually OK here in async
+                setTimeout(() => {
+                    const modalEl = document.getElementById('kycPromptModal')
+                    if (modalEl) {
+                        kycPromptModalInstance.value = new Modal(modalEl)
+                        kycPromptModalInstance.value.show()
+                    }
+                }, 500)
+            }
+
         } else {
             console.error('Failed to fetch user info:', data)
             // Optionally handle token expiration (e.g., redirect to login)
@@ -211,7 +206,7 @@ const fetchBankAccounts = async () => {
     if (!token) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/me/bank-account`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -239,7 +234,7 @@ const fetchGameAccounts = async () => {
     if (!token) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/game-account`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -289,7 +284,7 @@ const handleAddGameSubmit = async () => {
     const token = localStorage.getItem('authToken')
     
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/bind`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/bind`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -329,7 +324,7 @@ const handleGameVerifySubmit = async () => {
     isAddGameLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/verify`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/verify`, {
             method: 'POST',
             headers: {
                  'Authorization': `Bearer ${token}`,
@@ -368,10 +363,11 @@ const openAddBankModal = () => {
         return
     }
 
-
-
     bankStep.value = 1
-    addBankForm.value = { bank_code: '', branch_code: '', account_number: '', verification_code: '' }
+    addBankForm.value = { bank_code: '', branch_code: '', account_number: '', verification_code: '', cover_photo: null }
+    
+    fetchSupportedBanks() // Fetch banks when opening logic
+
     const modalEl = document.getElementById('addBankModal')
     if (modalEl) {
         addBankModalInstance.value = new Modal(modalEl)
@@ -379,11 +375,29 @@ const openAddBankModal = () => {
     }
 }
 
+const handleFileChange = (event) => {
+    const file = event.target.files[0]
+    if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert('檔案大小不能超過 5MB')
+            event.target.value = ''
+            addBankForm.value.cover_photo = null
+            return
+        }
+        addBankForm.value.cover_photo = file
+    }
+}
+
 const handleAddBankSubmit = async () => {
-    const { bank_code, branch_code, account_number } = addBankForm.value
+    const { bank_code, branch_code, account_number, cover_photo } = addBankForm.value
     
     if (!bank_code || !branch_code || !account_number) {
         alert('請填寫所有欄位。')
+        return
+    }
+
+    if (!cover_photo) {
+        alert('請上傳存摺封面照片。')
         return
     }
     
@@ -397,7 +411,6 @@ const handleAddBankSubmit = async () => {
         return
     }
 
-
     if (account_number.length > 14) {
          alert('銀行帳號最多14碼。')
          return
@@ -407,21 +420,23 @@ const handleAddBankSubmit = async () => {
     const token = localStorage.getItem('authToken')
     
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, {
+        const formData = new FormData()
+        formData.append('bank_code', bank_code)
+        formData.append('branch_code', branch_code)
+        formData.append('account_number', account_number)
+        formData.append('cover_photo', cover_photo)
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/bind`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${token}`
+                // Content-Type not set for FormData, browser sets it with boundary
             },
-            body: JSON.stringify({
-                bank_code,
-                branch_code,
-                account_number
-            })
+            body: formData
         })
 
         const data = await response.json()
-
+        
         if (response.ok && data.code === 0) {
             alert('銀行帳號綁定申請成功！驗證碼已發送。')
             bankAccountId.value = data.data.bank_account.id
@@ -432,12 +447,58 @@ const handleAddBankSubmit = async () => {
              alert('綁定失敗。')
         }
     } catch (error) {
-        console.error('Bind Bank Account Error:', error)
+        console.error('綁定銀行帳號錯誤:', error)
         alert('發生錯誤，請稍後再試。')
     } finally {
         isAddBankLoading.value = false
 
     }
+}
+
+const fetchSupportedBanks = async () => {
+    isBankListLoading.value = true
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks`)
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            bankList.value = data.data.banks
+        } else {
+            console.error('取得銀行列表失敗:', data)
+        }
+    } catch (error) {
+        console.error('取得銀行列表錯誤:', error)
+    } finally {
+        isBankListLoading.value = false
+    }
+}
+
+const fetchBankBranches = async (bankCode) => {
+    if (!bankCode) {
+        branchList.value = []
+        return
+    }
+    isBranchListLoading.value = true
+    branchList.value = [] // Clear previous branches
+    // Reset branch selection if changes
+    addBankForm.value.branch_code = '' 
+    
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks/${bankCode}/branches`)
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            branchList.value = data.data.branches
+        } else {
+            console.error('取得分行列表失敗:', data)
+        }
+    } catch (error) {
+        console.error('取得分行列表錯誤:', error)
+    } finally {
+        isBranchListLoading.value = false
+    }
+}
+
+const handleBankChange = () => {
+    fetchBankBranches(addBankForm.value.bank_code)
 }
 
 const handleBankVerifySubmit = async () => {
@@ -449,7 +510,7 @@ const handleBankVerifySubmit = async () => {
     isAddBankLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/verify`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/verify`, {
             method: 'POST',
             headers: {
                  'Authorization': `Bearer ${token}`,
@@ -496,7 +557,7 @@ const openChangePasswordModal = async () => {
   isChangePasswordLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/forgot-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -554,7 +615,7 @@ const handleChangePasswordSubmit = async () => {
 
     isChangePasswordLoading.value = true
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/reset-password`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -590,10 +651,13 @@ const handleChangePasswordSubmit = async () => {
 }
 
 //const kycModalInstance = ref(null)
+const isKycLoading = ref(false)
+
 const sendKYCInitiate = async () => {
+  isKycLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/kyc/initiate`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/kyc/initiate`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -618,7 +682,23 @@ const sendKYCInitiate = async () => {
   } catch (error) {
     console.error('KYC Error:', error)
     alert('發生錯誤，請稍後再試。')
+  } finally {
+    isKycLoading.value = false
   }
+}
+
+const confirmKycPrompt = () => {
+    if (kycPromptModalInstance.value) {
+        kycPromptModalInstance.value.hide()
+    }
+    sendKYCInitiate()
+}
+
+const startKyc = sendKYCInitiate
+
+const goToKycInfo = () => {
+    // If they say they already completed it, maybe just refresh user info or go to info page
+    router.push('/kyc-info')
 }
 
 const openEmailModal = () => {
@@ -1093,25 +1173,25 @@ const confirmEmail = async () => {
               <div class="d-grid">
                 <button class="btn btn-primary" @click="sendEmailCode" :disabled="isEmailLoading">
                   <span v-if="isEmailLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  {{ isEmailLoading ? 'Sending...' : 'Send Verification Code' }}
+                  {{ isEmailLoading ? '發送中...' : '發送驗證碼' }}
                 </button>
               </div>
             </div>
             <div v-else>
               <p class="text-muted mb-3">
-                A verification code has been sent to <strong>{{ emailForm.email }}</strong>.
-                <br>Please enter it below.
+                驗證碼已發送到 <strong>{{ emailForm.email }}</strong>。
+                <br>請輸入驗證碼。
               </p>
               <div class="mb-3">
-                <label class="form-label">Verification Code</label>
+                <label class="form-label">驗證碼</label>
                 <input type="text" class="form-control text-center fs-4" v-model="emailForm.code" maxlength="6" placeholder="------">
               </div>
               <div class="d-grid gap-2">
                 <button class="btn btn-success" @click="confirmEmail" :disabled="isEmailLoading">
                   <span v-if="isEmailLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                  {{ isEmailLoading ? 'Verifying...' : 'Verify & Bind' }}
+                  {{ isEmailLoading ? '驗證中...' : '驗證並綁定' }}
                 </button>
-                <button class="btn btn-link text-muted text-decoration-none" @click="emailStep = 1">Change Email</button>
+                <button class="btn btn-link text-muted text-decoration-none" @click="emailStep = 1">修改信箱</button>
               </div>
             </div>
           </div>
@@ -1144,7 +1224,7 @@ const confirmEmail = async () => {
                 <div class="d-grid">
                   <button type="submit" class="btn btn-primary" :disabled="isChangePasswordLoading">
                     <span v-if="isChangePasswordLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {{ isChangePasswordLoading ? 'Processing...' : '確認修改' }}
+                    {{ isChangePasswordLoading ? '處理中...' : '確認修改' }}
                   </button>
                 </div>
             </form>
@@ -1167,20 +1247,37 @@ const confirmEmail = async () => {
              <form v-if="bankStep === 1" @submit.prevent="handleAddBankSubmit">
                 <div class="mb-3">
                   <label class="form-label">銀行代碼 (Bank Code)</label>
-                  <input type="text" class="form-control" v-model="addBankForm.bank_code" placeholder="共3碼 (例如 013)" maxlength="3" required>
+                  <select class="form-select" v-model="addBankForm.bank_code" @change="handleBankChange" required :disabled="isBankListLoading">
+                      <option value="" disabled>請選擇銀行</option>
+                      <option v-for="bank in bankList" :key="bank.code" :value="bank.code">
+                          {{ bank.code }} - {{ bank.name }}
+                      </option>
+                  </select>
+                  <div v-if="isBankListLoading" class="form-text">取得銀行列表中...</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">分行代碼 (Branch Code)</label>
-                  <input type="text" class="form-control" v-model="addBankForm.branch_code" placeholder="共4碼 (例如 1234)" maxlength="4" required>
+                  <select class="form-select" v-model="addBankForm.branch_code" required :disabled="!addBankForm.bank_code || isBranchListLoading">
+                      <option value="" disabled>請選擇分行</option>
+                      <option v-for="branch in branchList" :key="branch.code" :value="branch.code">
+                          {{ branch.code }} - {{ branch.name }}
+                      </option>
+                  </select>
+                   <div v-if="isBranchListLoading" class="form-text">取得分行列表中...</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">銀行帳號 (Account Number)</label>
                   <input type="text" class="form-control" v-model="addBankForm.account_number" placeholder="最多14碼" maxlength="14" required>
                 </div>
+                <div class="mb-3">
+                  <label class="form-label">存摺封面照片 (Cover Photo)</label>
+                  <input type="file" class="form-control" @change="handleFileChange" accept="image/jpeg, image/png" required>
+                  <div class="form-text">支援 JPEG, PNG 格式，最大 5MB</div>
+                </div>
                 <div class="d-grid">
                   <button type="submit" class="btn btn-primary" :disabled="isAddBankLoading">
                     <span v-if="isAddBankLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {{ isAddBankLoading ? 'Processing...' : '確認新增' }}
+                    {{ isAddBankLoading ? '處理中...' : '確認新增' }}
                   </button>
                 </div>
              </form>
@@ -1192,10 +1289,33 @@ const confirmEmail = async () => {
                  <div class="d-grid">
                   <button type="submit" class="btn btn-success" :disabled="isAddBankLoading">
                     <span v-if="isAddBankLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {{ isAddBankLoading ? 'Verify & Bind' : '確認綁定' }}
+                    {{ isAddBankLoading ? '驗證中...' : '驗證並綁定' }}
                   </button>
                 </div>
              </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KYC Auto Prompt Modal (Confirm/Cancel) -->
+    <div class="modal fade" id="kycPromptModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">身分驗證提醒</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <i class="bi bi-person-badge text-warning display-1 mb-3"></i>
+            <p class="mb-4 text-muted fs-5">
+              您的帳戶尚未完成身分驗證 (KYC)。<br>
+              為了確保交易安全，請立即進行驗證。
+            </p>
+            <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+              <button class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">稍後再說</button>
+              <button class="btn btn-primary px-4" @click="confirmKycPrompt">前往驗證 (Confirm)</button>
+            </div>
           </div>
         </div>
       </div>
@@ -1227,7 +1347,7 @@ const confirmEmail = async () => {
                 <div class="d-grid">
                   <button type="submit" class="btn btn-primary" :disabled="isAddGameLoading">
                     <span v-if="isAddGameLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {{ isAddGameLoading ? 'Processing...' : '確認新增' }}
+                    {{ isAddGameLoading ? '處理中...' : '確認新增' }}
                   </button>
                 </div>
              </form>
@@ -1239,7 +1359,7 @@ const confirmEmail = async () => {
                  <div class="d-grid">
                   <button type="submit" class="btn btn-success" :disabled="isAddGameLoading">
                     <span v-if="isAddGameLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    {{ isAddGameLoading ? 'Verify & Bind' : '確認綁定' }}
+                    {{ isAddGameLoading ? '驗證中...' : '驗證並綁定' }}
                   </button>
                 </div>
              </form>

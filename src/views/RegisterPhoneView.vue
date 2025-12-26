@@ -44,7 +44,7 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/phone`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/phone`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +79,7 @@ const handleResendCode = async () => {
     isLoading.value = true
     errorMessage.value = ''
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/resend-verification`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ const handleOtpSubmit = async () => {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/verify`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -161,7 +161,7 @@ const handlePasswordSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/password`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

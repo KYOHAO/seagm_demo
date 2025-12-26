@@ -37,7 +37,7 @@ const handleLogin = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/login`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

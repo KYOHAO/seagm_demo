@@ -28,7 +28,7 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/forgot-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
