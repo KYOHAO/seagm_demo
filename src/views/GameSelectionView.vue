@@ -1,7 +1,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
-import { Modal } from 'bootstrap'
 import { useRouter } from 'vue-router'
 import { useGameStores } from '../composables/useGameStores'
 import { apiFetch } from '../utils/api'
