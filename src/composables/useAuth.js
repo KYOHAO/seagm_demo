@@ -1,14 +1,17 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiFetch } from '../utils/api'
 
 const isLoggedIn = ref(!!localStorage.getItem('authToken'))
+const token = ref(localStorage.getItem('authToken'))
 
 export function useAuth() {
     const router = useRouter()
 
-    const login = (token, user) => {
-        localStorage.setItem('authToken', token)
+    const login = (newToken, user) => {
+        localStorage.setItem('authToken', newToken)
         localStorage.setItem('userInfo', JSON.stringify(user))
+        token.value = newToken
         isLoggedIn.value = true
     }
 
@@ -16,11 +19,8 @@ export function useAuth() {
         try {
             const token = localStorage.getItem('authToken')
             if (token) {
-                await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/logout`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/logout`, {
+                    method: 'POST'
                 })
             }
         } catch (error) {
@@ -28,10 +28,11 @@ export function useAuth() {
         } finally {
             localStorage.removeItem('authToken')
             localStorage.removeItem('userInfo')
+            token.value = null
             isLoggedIn.value = false
             window.location.href = '/login' // Force reload/redirect to ensure clean state
         }
     }
 
-    return { isLoggedIn, login, logout }
+    return { isLoggedIn, token, login, logout }
 }

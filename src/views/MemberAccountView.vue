@@ -1,12 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { useGameStores } from '../composables/useGameStores'
 import { handleApiError } from '../utils/apiError'
 import { useAuth } from '../composables/useAuth'
+import { apiFetch } from '../utils/api'
 
 const router = useRouter()
+const route = useRoute()
 const { logout } = useAuth()
 const activeMenu = ref('orders')
 const stats = ref({
@@ -75,11 +77,23 @@ const isHistoryLoading = ref(false)
 
 onMounted(() => {
     fetchUserInfo()
-    activeMenu.value = 'bank_accounts' // Optional: default to bank for testing? Or keep 'orders'
+    
+    // Handle Tab Param
+    const tab = route.query.tab
+    if (tab === 'transactions') {
+        activeMenu.value = 'history'
+    } else if (tab === 'bank') {
+        activeMenu.value = 'bank_accounts'
+    } else if (tab === 'game') {
+        activeMenu.value = 'game_accounts'
+    } else if (tab === 'orders') {
+        activeMenu.value = 'orders'
+    } else {
+        activeMenu.value = 'orders' // Default
+    }
 })
 
 // Watch activeMenu to fetch when switching?
-import { watch } from 'vue'
 watch(activeMenu, (newVal) => {
     if (newVal === 'bank_accounts') {
         fetchBankAccounts()
@@ -87,6 +101,7 @@ watch(activeMenu, (newVal) => {
         fetchGameAccounts()
         fetchGameStores()
     } else if (newVal === 'history') {
+        fetchGameStores() // Ensure stores are loaded for name mapping
         if (historyTab.value === 'buying') {
             fetchBuyingOrders()
         } else {
@@ -114,11 +129,8 @@ const getStoreName = (storeId) => {
 
 const fetchBuyingOrders = async (page = 1) => {
     isHistoryLoading.value = true
-    const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/buying?page=${page}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/buying?page=${page}`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             buyingOrders.value = data.data.orders
@@ -127,7 +139,7 @@ const fetchBuyingOrders = async (page = 1) => {
             console.error('Fetch Buying Orders Failed:', data)
         }
     } catch (error) {
-        console.error('Fetch Buying Orders Error:', error)
+         console.error('Fetch Buying Orders Error:', error)
     } finally {
         isHistoryLoading.value = false
     }
@@ -135,11 +147,8 @@ const fetchBuyingOrders = async (page = 1) => {
 
 const fetchSellingOrders = async (page = 1) => {
     isHistoryLoading.value = true
-    const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling?page=${page}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling?page=${page}`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             sellingOrders.value = data.data.orders
@@ -159,12 +168,8 @@ const fetchUserInfo = async () => {
     if (!token) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
+            method: 'GET'
         })
 
         const data = await response.json()
@@ -206,12 +211,8 @@ const fetchBankAccounts = async () => {
     if (!token) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`, {
+            method: 'GET'
         })
 
         const data = await response.json()
@@ -234,12 +235,8 @@ const fetchGameAccounts = async () => {
     if (!token) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`, {
+            method: 'GET'
         })
 
         const data = await response.json()
@@ -284,12 +281,8 @@ const handleAddGameSubmit = async () => {
     const token = localStorage.getItem('authToken')
     
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/bind`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/bind`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 store_id,
                 account_name
@@ -324,12 +317,8 @@ const handleGameVerifySubmit = async () => {
     isAddGameLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/verify`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/verify`, {
             method: 'POST',
-            headers: {
-                 'Authorization': `Bearer ${token}`,
-                 'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 game_account_id: newGameAccountId.value,
                 verification_code: addGameForm.value.verification_code
@@ -426,13 +415,10 @@ const handleAddBankSubmit = async () => {
         formData.append('account_number', account_number)
         formData.append('cover_photo', cover_photo)
 
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/bind`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/bind`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-                // Content-Type not set for FormData, browser sets it with boundary
-            },
-            body: formData
+            body: formData,
+            headers: {} // No content-type for formData
         })
 
         const data = await response.json()
@@ -458,7 +444,7 @@ const handleAddBankSubmit = async () => {
 const fetchSupportedBanks = async () => {
     isBankListLoading.value = true
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             bankList.value = data.data.banks
@@ -483,7 +469,7 @@ const fetchBankBranches = async (bankCode) => {
     addBankForm.value.branch_code = '' 
     
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks/${bankCode}/branches`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks/${bankCode}/branches`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             branchList.value = data.data.branches
@@ -510,12 +496,8 @@ const handleBankVerifySubmit = async () => {
     isAddBankLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/verify`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/verify`, {
             method: 'POST',
-            headers: {
-                 'Authorization': `Bearer ${token}`,
-                 'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 bank_account_id: bankAccountId.value,
                 verification_code: addBankForm.value.verification_code
@@ -557,11 +539,8 @@ const openChangePasswordModal = async () => {
   isChangePasswordLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/forgot-password`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/forgot-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ phone_number: userInfo.value.phone_number })
     })
 
@@ -615,11 +594,8 @@ const handleChangePasswordSubmit = async () => {
 
     isChangePasswordLoading.value = true
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/reset-password`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/reset-password`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({
                 phone_number: userInfo.value.phone_number,
                 verification_code: code,
@@ -657,12 +633,8 @@ const sendKYCInitiate = async () => {
   isKycLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/kyc/initiate`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/kyc/initiate`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({
           success_url: `${import.meta.env.VITE_FRONTEND_BASE_URL}/kyc-info`,
           error_url: `${import.meta.env.VITE_FRONTEND_BASE_URL}/account`,
@@ -725,12 +697,8 @@ const sendEmailCode = async () => {
   isEmailLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/email/verify', {
+    const response = await apiFetch('https://dealer-agent.nygamedepot.com/api/v1/email/verify', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ email: emailForm.value.email })
     })
 
@@ -761,12 +729,8 @@ const confirmEmail = async () => {
   isEmailLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/email/confirm', {
+    const response = await apiFetch('https://dealer-agent.nygamedepot.com/api/v1/email/confirm', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
       body: JSON.stringify({ verification_code: emailForm.value.code })
     })
 

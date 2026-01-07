@@ -4,6 +4,7 @@ import { Modal } from 'bootstrap'
 import { Modal } from 'bootstrap'
 import { useRouter } from 'vue-router'
 import { useGameStores } from '../composables/useGameStores'
+import { apiFetch } from '../utils/api'
 
 const router = useRouter()
 const { stores: games, isLoading, fetchGameStores: fetchGames } = useGameStores()

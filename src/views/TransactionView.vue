@@ -1,9 +1,13 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { Modal } from 'bootstrap'
 import { useUserAccounts } from '../composables/useUserAccounts'
+import { useAuth } from '../composables/useAuth'
+import { apiFetch } from '../utils/api'
 
 const route = useRoute()
+const router = useRouter()
 const txType = ref(route.query.type === 'sell' ? 'sell' : 'buy')
 const transactionType = computed(() => txType.value === 'sell' ? 'Sell' : 'Buy')
 const gameName = computed(() => route.query.game || 'Unknown Game')
@@ -13,6 +17,9 @@ const toggleTransactionType = (type) => {
     txType.value = type
     // Refresh rate when type changes
     fetchStoreDetails()
+    // Reset amounts on type change to avoid confusion (re-linkage)
+    twdAmount.value = 0
+    gameCurrencyAmount.value = 0
   }
 }
 
@@ -26,30 +33,24 @@ const fetchStoreDetails = async () => {
     if (!storeId) return
 
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/stores/${storeId}`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/stores/${storeId}`)
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
             storeDetails.value = data.data.store
             // Assume first point type for now as per requirement context, or logic to select point?
             // Requirement just says "get buy/sell rate". I'll take the first point's rates.
-            if (storeDetails.value.points && storeDetails.value.points.length > 0) {
-                const point = storeDetails.value.points[0]
-                if (txType.value === 'sell') {
-                     // Selling: User sells Game Currency -> Gets TWD?
-                     // Rate definition: "buying_rate": 10.0 (Dealer buys?), "selling_rate": 10.0 (Dealer sells?)
-                     // Usually "Buying Rate" = Dealer buys from User. "Selling Rate" = Dealer sells to User.
-                     // Let's assume:
-                     // User Buy Currency (Dealer Sell) -> Use selling_rate
-                     // User Sell Currency (Dealer Buy) -> Use buying_rate
-                     exchangeRate.value = point.buying_rate // Dealer's buying rate
-                } else {
-                     exchangeRate.value = point.selling_rate // Dealer's selling rate
-                }
+            // Access rates directly from store object as verified by API pattern
+            if (txType.value === 'sell') {
+                 // User Sell Currency (Dealer Buy) -> Use buying_rate
+                 exchangeRate.value = storeDetails.value.buying_rate
+            } else {
+                 // User Buy Currency (Dealer Sell) -> Use selling_rate
+                 exchangeRate.value = storeDetails.value.selling_rate
             }
         }
     } catch (error) {
-        console.error('Fetch Store Details Error:', error)
+        console.error('取得商店設定錯誤:', error)
     }
 }
 
@@ -63,7 +64,8 @@ const validBankAccounts = computed(() => {
 
 const validGameAccounts = computed(() => {
     if (!gameAccounts.value) return []
-    return gameAccounts.value.filter(acc => acc.status === 1)
+    const currentStoreId = route.query.storeId
+    return gameAccounts.value.filter(acc => acc.status === 1 && acc.store_id === currentStoreId)
 })
 
 onMounted(async () => {
@@ -96,13 +98,12 @@ const termsChecked2 = ref(false)
 const otpCode = ref('')
 
 // Bidirectional Conversion
-// Bidirectional Conversion
 watch(twdAmount, (newVal) => {
   if (isUpdating.value) return
   isUpdating.value = true
   if (exchangeRate.value === 0) return
-  // Calculate game currency
-  const calculated = newVal * exchangeRate.value
+  // Calculate game currency: twd / rate
+  const calculated = newVal * exchangeRate.value 
   // Requirement: "Input finished then convert". lazy handles input finish.
   // "Do not show decimal points first". If result is integer, show integer.
   gameCurrencyAmount.value = Number.isInteger(calculated) ? calculated : Number(calculated.toFixed(2))
@@ -113,29 +114,163 @@ watch(gameCurrencyAmount, (newVal) => {
   if (isUpdating.value) return
   isUpdating.value = true
   if (exchangeRate.value === 0) return
+  // Calculate twd: game * rate
   const calculated = newVal / exchangeRate.value
   twdAmount.value = Number.isInteger(calculated) ? calculated : Number(calculated.toFixed(2))
   isUpdating.value = false
 })
 
-const handleConfirm = () => {
-  showOtpSection.value = true
+const sellingDraftId = ref(null)
+const smsVerificationCode = ref('')
+
+const handleConfirm = async () => {
+    if (twdAmount.value < 1000) {
+        alert('交易金額不可低於 1000 TWD')
+        return
+    }
+
+    if (txType.value === 'sell') {
+        await createSellingDraft()
+    } else {
+        showOtpSection.value = true
+    }
+}
+
+const createSellingDraft = async () => {
+    try {
+        const token = localStorage.getItem('authToken')
+        if (!token) {
+            alert('請先登入')
+            router.push('/login')
+            return
+        }
+
+        const payload = {
+            store_id: route.query.storeId,
+            price: twdAmount.value
+        }
+
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling/draft`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            alert('簡訊驗證碼已發送至您的手機！')
+            sellingDraftId.value = data.data.draft_id
+            showOtpSection.value = true
+        } else {
+            alert(data.msg || '建立訂單草稿失敗')
+        }
+    } catch (error) {
+        console.error('Create Draft Error:', error)
+        alert('建立訂單草稿時發生錯誤')
+    }
 }
 
 const sendOtp = () => {
-  alert('OTP sent to your mobile phone!')
+  // Not used in this flow as Draft API sends it, but keeping if needed for resend later? uesr didn't ask for resend.
+  alert('簡訊驗證碼已發送至您的手機！')
 }
 
-const submitOrder = () => {
+const submitOrder = async () => {
   if (!termsChecked1.value || !termsChecked2.value) {
-    alert('Please accept all terms and conditions.')
+    alert('請接受所有條款和條件。')
     return
   }
-  if (!otpCode.value) {
-    alert('Please enter the OTP code.')
-    return
+
+  if (txType.value === 'sell') {
+      if (!smsVerificationCode.value) {
+          alert('請輸入簡訊驗證碼')
+          return
+      }
+      await confirmSellingOrder()
+  } else {
+      createBuyingOrder()
   }
-  alert('Order submitted successfully!')
+}
+
+const confirmSellingOrder = async () => {
+    try {
+        const token = localStorage.getItem('authToken')
+        const payload = {
+            draft_id: sellingDraftId.value,
+            verification_code: smsVerificationCode.value
+        }
+
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling/confirm`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            alert('銷售訂單提交成功！')
+            router.push('/account?tab=transactions')
+        } else {
+            alert(data.msg || '提交訂單失敗')
+        }
+    } catch (error) {
+        console.error('Confirm Order Error:', error)
+        alert('提交訂單時發生錯誤')
+    }
+}
+
+const orderResult = ref(null)
+const successModalInstance = ref(null)
+
+const createBuyingOrder = async () => {
+    try {
+        const payload = {
+            store_id: route.query.storeId,
+            price: twdAmount.value
+        }
+
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/buying`, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.code === 0) {
+            // alert('購買訂單建立成功！')
+            orderResult.value = data.data.order || data.data // Adjust based on actual API response structure
+            
+            const modalEl = document.getElementById('orderSuccessModal')
+            if (modalEl) {
+                successModalInstance.value = new Modal(modalEl)
+                successModalInstance.value.show()
+            }
+        } else {
+            alert(data.msg || '建立訂單失敗')
+        }
+    } catch (error) {
+        console.error('Create Order Error:', error)
+        alert('建立訂單時發生錯誤')
+    }
+}
+
+const closeSuccessModal = () => {
+    if (successModalInstance.value) {
+        successModalInstance.value.hide()
+    }
+    router.push('/account?tab=transactions')
+}
+
+const goBack = () => {
+    router.back()
 }
 </script>
 
@@ -144,8 +279,11 @@ const submitOrder = () => {
     <div class="row justify-content-center">
       <div class="col-lg-8">
         <div class="card shadow-lg border-0">
-          <div class="card-header bg-white text-center py-3 border-bottom">
-            <h4 class="mb-3 fw-bold">{{ gameName }} Currency</h4>
+          <div class="card-header bg-white text-center py-3 border-bottom position-relative">
+            <button class="btn btn-link text-dark position-absolute top-50 start-0 translate-middle-y ms-3 text-decoration-none" @click="goBack">
+                <i class="bi bi-arrow-left fs-4"></i>
+            </button>
+            <h4 class="mb-3 fw-bold">{{ gameName }}</h4>
             
             <div class="btn-group w-50" role="group">
                 <input type="radio" class="btn-check" name="btnradio" id="btnradio1" autocomplete="off" :checked="txType === 'buy'" @change="toggleTransactionType('buy')">
@@ -159,36 +297,68 @@ const submitOrder = () => {
             
             <!-- 1. Exchange Rate -->
             <div class="alert alert-info text-center fw-bold mb-4">
-              Exchange Rate: 1 TWD = {{ exchangeRate }} Game Currency
+              匯率：1 遊戲幣 = {{ exchangeRate }} 新台幣
             </div>
 
             <!-- 2. Promotion -->
-            <div class="mb-4">
+            <!--<div class="mb-4">
               <label class="form-label fw-bold">Select Promotion (活動優惠)</label>
               <select class="form-select" v-model="selectedPromotion">
                 <option v-for="promo in promotions" :key="promo" :value="promo">{{ promo }}</option>
               </select>
-            </div>
+            </div>-->
 
             <!-- 3. Calculator -->
-            <div class="row g-3 mb-4 align-items-end">
-              <div class="col-md-5">
-                <label class="form-label fw-bold">TWD Amount (台幣)</label>
-                <div class="input-group">
-                  <span class="input-group-text">NT$</span>
-                  <input type="number" class="form-control" v-model.lazy="twdAmount" min="0">
-                </div>
-              </div>
-              <div class="col-md-2 text-center text-muted">
-                <i class="bi bi-arrow-left-right fs-4"></i>
-              </div>
-              <div class="col-md-5">
-                <label class="form-label fw-bold">Game Currency (遊戲幣)</label>
-                <div class="input-group">
-                  <input type="number" class="form-control" v-model.lazy="gameCurrencyAmount" min="0">
-                  <span class="input-group-text">Coins</span>
-                </div>
-              </div>
+            <div class="row g-3 mb-4">
+              <!-- Buy Mode: TWD Left, Game Currency Right -->
+              <template v-if="txType === 'buy'">
+                  <div class="col-md-5">
+                    <label class="form-label fw-bold">新台幣 (TWD Amount)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" v-model.lazy="twdAmount" min="0">
+                    </div>
+                    <div class="form-text text-muted">最低金額: 1000 TWD</div>
+                    <div v-if="twdAmount > 0 && twdAmount < 1000" class="text-danger small mt-1">
+                      <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1000 TWD
+                    </div>
+                  </div>
+                  <div class="col-md-2 text-center text-muted pt-4">
+                    <i class="bi bi-arrow-left-right fs-4"></i>
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label fw-bold">遊戲幣 (Game Currency)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" v-model.lazy="gameCurrencyAmount" min="0" disabled>
+                      <span class="input-group-text">Coins</span>
+                    </div>
+                  </div>
+              </template>
+
+              <!-- Sell Mode: Game Currency Left, TWD Right -->
+              <template v-else>
+                   <div class="col-md-5">
+                    <label class="form-label fw-bold">遊戲幣 (Game Currency)</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control" v-model.lazy="gameCurrencyAmount" min="0" disabled>
+                      <span class="input-group-text">Coins</span>
+                    </div>
+                  </div>
+                  <div class="col-md-2 text-center text-muted pt-4">
+                    <i class="bi bi-arrow-left-right fs-4"></i>
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label fw-bold">台幣 (TWD Amount)</label>
+                    <div class="input-group">
+                      <span class="input-group-text">NT$</span>
+                      <input type="number" class="form-control" v-model.lazy="twdAmount" min="1000">
+                    </div>
+                    <div class="form-text text-muted">最低金額: 1000 TWD</div>
+                     <div v-if="twdAmount > 0 && twdAmount < 1000" class="text-danger small mt-1">
+                      <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1000 TWD
+                    </div>
+                  </div>
+              </template>
             </div>
 
             <!-- 4. Game Account -->
@@ -221,45 +391,91 @@ const submitOrder = () => {
 
             <!-- 6. Confirmation & OTP -->
             <div v-if="!showOtpSection" class="d-grid">
-              <button class="btn btn-primary btn-lg fw-bold" @click="handleConfirm">Confirm Transaction</button>
+              <button class="btn btn-primary btn-lg fw-bold" @click="handleConfirm">確認交易</button>
             </div>
 
             <div v-else class="border-top pt-4 mt-4 animate-fade-in">
-              <h5 class="fw-bold mb-3">Security Verification</h5>
+              <h5 class="fw-bold mb-3">安全性驗證</h5>
               
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="term1" v-model="termsChecked1">
                 <label class="form-check-label" for="term1">
-                  I have read and agree to the <a href="#">Terms of Service</a>.
+                  我已閱讀並同意 <a href="#">服務條款</a>。
                 </label>
               </div>
               <div class="form-check mb-4">
                 <input class="form-check-input" type="checkbox" id="term2" v-model="termsChecked2">
                 <label class="form-check-label" for="term2">
-                  I confirm that the transaction details are correct.
+                  我確認交易細節正確。
                 </label>
               </div>
 
-              <div class="mb-4">
-                <label class="form-label fw-bold">SMS OTP</label>
+               <div v-if="txType === 'sell'" class="mb-4">
+                <label class="form-label fw-bold">簡訊驗證碼</label>
                 <div class="input-group">
-                  <input type="text" class="form-control" placeholder="Enter OTP code" v-model="otpCode">
-                  <button class="btn btn-outline-primary" type="button" @click="sendOtp">Send OTP</button>
+                  <input type="text" class="form-control" placeholder="輸入簡訊驗證碼" v-model="smsVerificationCode">
+                  <!-- <button class="btn btn-outline-primary" type="button" @click="sendOtp">發送驗證碼</button> -->
                 </div>
+                <div class="form-text text-muted">驗證碼已發送至您的手機</div>
               </div>
 
               <div class="d-grid">
-                <button class="btn btn-success btn-lg fw-bold" @click="submitOrder">Submit Order</button>
+                <button class="btn btn-success btn-lg fw-bold" @click="submitOrder">提交訂單</button>
+              </div>
+            </div>
+
+            <!-- Success Modal -->
+            <div class="modal fade" id="orderSuccessModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+              <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                  <div class="modal-header border-0 bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-check-circle-fill me-2"></i>訂單建立成功</h5>
+                    <button type="button" class="btn-close btn-close-white" @click="closeSuccessModal"></button>
+                  </div>
+                  <div class="modal-body p-4">
+                    <div v-if="orderResult" class="table-responsive">
+                      <table class="table table-bordered table-striped">
+                        <tbody>
+                          <tr><th width="30%">商戶 ID (Store ID)</th><td>{{ orderResult.store_id }}</td></tr>
+                          <tr><th>點數類型 ID (Point ID)</th><td>{{ orderResult.point_id }}</td></tr>
+                          <tr><th>數量 (Quantity)</th><td>{{ orderResult.quantity }}</td></tr>
+                          <tr><th>單價 (Unit Price)</th><td>{{ orderResult.unit_price }}</td></tr>
+                          <tr><th>總價 (Total Price)</th><td>{{ orderResult.total_price }}</td></tr>
+                          <!--<tr><th>付款方式 (Payment)</th><td>{{ orderResult.payments_label }} ({{ orderResult.payments }})</td></tr>-->
+                          <!--<tr><th>付款子類型 (Sub)</th><td>{{ orderResult.payments_sub || '-' }}</td></tr>-->
+                          
+                          <!-- Customer Info -->
+                          <!--<tr><th>付款人銀行代碼</th><td>{{ orderResult.payer_bank_code || '-' }}</td></tr>
+                          <tr><th>付款人帳號</th><td>{{ orderResult.payer_card_no || '-' }}</td></tr>-->
+
+                          <!-- Payee Info -->
+                          <tr><th>收款人銀行代碼 (Payee Bank)</th><td>{{ orderResult.payee_bank_code }}</td></tr>
+                          <tr><th>收款人帳號 (Payee Account)</th><td>{{ orderResult.payee_card_no }}</td></tr>
+                          <tr><th>收款遊戲帳號 (Game Account)</th><td>{{ orderResult.payee_game_account }}</td></tr>
+                          
+                          <tr><th>狀態 (Status)</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
+                          <tr><th>建立時間 (Created At)</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
+                        </tbody>
+                      </table>
+                      <div class="alert alert-warning mt-3">
+                          <i class="bi bi-info-circle me-2"></i>請盡快完成付款轉帳，以利訂單處理。
+                      </div>
+                    </div>
+                  </div>
+                  <div class="modal-footer border-0 justify-content-center">
+                     <button type="button" class="btn btn-primary px-5" @click="closeSuccessModal">確定 (前往訂單列表)</button>
+                  </div>
+                </div>
               </div>
             </div>
 
           </div>
           <div class="card-footer bg-light text-muted small p-4">
-            <h6 class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Trading Warning (買賣警語)</h6>
+            <h6 class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>買賣警語</h6>
             <p class="mb-0">
-              Please be aware of potential fraud. Do not share your OTP or password with anyone. 
-              Ensure you are trading on the official SEAGM platform. 
-              Transactions are final once completed.
+              請注意潛在詐騙風險。請勿向任何人透露您的 OTP 或密碼。 
+              請確保您在官方 SEAGM 平台上交易。 
+              交易一旦完成即為最終決議。
             </p>
           </div>
         </div>

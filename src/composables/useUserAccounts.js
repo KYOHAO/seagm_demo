@@ -1,6 +1,7 @@
 
 import { ref } from 'vue'
 import { useGameStores } from './useGameStores'
+import { apiFetch } from '../utils/api'
 
 export function useUserAccounts() {
     const gameAccounts = ref([])
@@ -12,14 +13,7 @@ export function useUserAccounts() {
         isLoading.value = true
         error.value = null
         try {
-            const token = localStorage.getItem('authToken')
-            if (!token) throw new Error('No auth token found')
-
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
+            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`)
             const data = await response.json()
             if (response.ok && data.code === 0) {
                 // Fetch stores to map names using composable
@@ -52,14 +46,7 @@ export function useUserAccounts() {
         isLoading.value = true
         error.value = null
         try {
-            const token = localStorage.getItem('authToken')
-            if (!token) throw new Error('No auth token found')
-
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
+            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`)
             const data = await response.json()
             if (response.ok && data.code === 0) {
                 bankAccounts.value = data.data.bank_accounts
