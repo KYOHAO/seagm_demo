@@ -1,9 +1,11 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
 const { isLoggedIn } = useAuth()
+const toast = useToast()
 
 const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -15,7 +17,7 @@ const handleSidebarClick = (route) => {
   } else if (route) {
     router.push(route)
   } else {
-     alert('Feature coming soon!')
+    toast.info('功能尚未完成!')
   }
 }
 </script>
@@ -26,11 +28,11 @@ const handleSidebarClick = (route) => {
       <i class="bi bi-person"></i>
       <span>會員中心</span>
     </div>
-    <div class="sidebar-item" @click="handleSidebarClick()">
+    <!--<div class="sidebar-item" @click="handleSidebarClick()">
       <i class="bi bi-cart"></i>
       <span>購物車</span>
       <span class="badge bg-danger rounded-pill position-absolute top-15 start-80 translate-middle" style="font-size: 0.6rem;">0</span>
-    </div>
+    </div>-->
     <div class="sidebar-item" @click="handleSidebarClick()">
       <i class="bi bi-clock-history"></i>
       <span>歷史訂單</span>

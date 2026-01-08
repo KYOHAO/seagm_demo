@@ -2,8 +2,10 @@
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { handleApiError } from '../utils/apiError'
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
+const toast = useToast()
 const phoneNumber = ref('')
 const otpCode = ref('')
 const step = ref(1) // 1: Phone Input, 2: OTP Input, 3: Password
@@ -60,7 +62,7 @@ const handlePhoneSubmit = async () => {
       step.value = 2
       startCountdown()
       //alert(data.msg || '驗證碼已發送成功。')
-      alert('驗證碼已發送成功。')
+      toast.success('驗證碼已發送成功。')
     } else {
       //errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
       errorMessage.value = handleApiError(data)
@@ -93,7 +95,7 @@ const handleResendCode = async () => {
 
         if (response.ok && data.code === 0) {
             //alert(data.msg || '驗證碼已重新發送成功。')
-            alert('驗證碼已重新發送成功。')
+            toast.success('驗證碼已重新發送成功。')
             startCountdown()
         } else {
             //errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
@@ -109,7 +111,7 @@ const handleResendCode = async () => {
 
 const handleOtpSubmit = async () => {
   if (otpCode.value.length !== 6) {
-    alert('請輸入6位數的驗證碼。')
+    toast.warning('請輸入6位數的驗證碼。')
     return
   }
   
@@ -131,10 +133,10 @@ const handleOtpSubmit = async () => {
     const data = await response.json()
 
     if (response.ok && data.code === 0) {
-      alert('驗證成功。')
+      toast.success('驗證成功。')
       step.value = 3
     } else {
-      alert('驗證失敗，請檢查驗證碼。')
+      toast.error('驗證失敗，請檢查驗證碼。')
       //errorMessage.value = handleApiError(data) || '驗證失敗，請檢查驗證碼。'
       errorMessage.value = handleApiError(data)
     }
@@ -176,7 +178,7 @@ const handlePasswordSubmit = async () => {
     const data = await response.json()
 
     if (response.ok && data.code === 0) {
-       alert('註冊成功！請登入。')
+       toast.success('註冊成功！請登入。')
        router.push('/login')
     } else {
       //errorMessage.value = handleApiError(data) || '註冊失敗。'

@@ -1,28 +1,46 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { formatNumber, parseNumber } from '../utils/format'
+import { useToast } from '../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { useUserAccounts } from '../composables/useUserAccounts'
-import { useAuth } from '../composables/useAuth'
 import { apiFetch } from '../utils/api'
 
 const route = useRoute()
 const router = useRouter()
+const toast = useToast()
 const txType = ref(route.query.type === 'sell' ? 'sell' : 'buy')
+const isLoading = ref(true)
+const isSubmitting = ref(false)
 const transactionType = computed(() => txType.value === 'sell' ? 'Sell' : 'Buy')
 const gameName = computed(() => route.query.game || 'Unknown Game')
 
 const toggleTransactionType = (type) => {
   if (txType.value !== type) {
-    txType.value = type
-    // Refresh rate when type changes
-    fetchStoreDetails()
-    // Reset amounts on type change to avoid confusion (re-linkage)
-    twdAmount.value = 0
-    gameCurrencyAmount.value = 0
+    // Navigate to new URL with updated type, keeping existing query params
+    router.replace({
+      query: {
+        ...route.query,
+        type: type === 'buy' ? 'buy' : 'sell' // 'buy' is usually default but good to be explicit
+      }
+    })
   }
 }
+
+// Watch for route query changes to update local state
+watch(() => route.query.type, (newType) => {
+    const type = newType === 'sell' ? 'sell' : 'buy'
+    if (txType.value !== type) {
+        txType.value = type
+        // Refresh rate when type changes
+        fetchStoreDetails()
+        // Reset amounts on type change to avoid confusion (re-linkage)
+        twdAmount.value = 0
+        gameCurrencyAmount.value = 0
+        showOtpSection.value = false
+    }
+})
 
 
 // Rate from API
@@ -70,15 +88,25 @@ const validGameAccounts = computed(() => {
 })
 
 onMounted(async () => {
-    fetchStoreDetails()
-    await Promise.all([fetchGameAccounts(), fetchBankAccounts()])
-    
-    // Set defaults if available
-    if (validGameAccounts.value.length > 0) {
-        selectedGameAccount.value = validGameAccounts.value[0].id
-    }
-    if (validBankAccounts.value.length > 0) {
-        selectedBankAccount.value = validBankAccounts.value[0].id
+    isLoading.value = true
+    try {
+        await Promise.all([
+            fetchStoreDetails(),
+            fetchGameAccounts(),
+            fetchBankAccounts()
+        ])
+        
+        // Set defaults if available
+        if (validGameAccounts.value.length > 0) {
+            selectedGameAccount.value = validGameAccounts.value[0].id
+        }
+        if (validBankAccounts.value.length > 0) {
+            selectedBankAccount.value = validBankAccounts.value[0].id
+        }
+    } catch (error) {
+        console.error('Initialization Error:', error)
+    } finally {
+        isLoading.value = false
     }
 })
 
@@ -140,7 +168,7 @@ const smsVerificationCode = ref('')
 
 const handleConfirm = async () => {
     if (twdAmount.value < 1000) {
-        alert('交易金額不可低於 1000 TWD')
+        toast.error('交易金額不可低於 1000 TWD')
         return
     }
 
@@ -152,10 +180,12 @@ const handleConfirm = async () => {
 }
 
 const createSellingDraft = async () => {
+    if (isSubmitting.value) return
+    isSubmitting.value = true
     try {
         const token = localStorage.getItem('authToken')
         if (!token) {
-            alert('請先登入')
+            toast.warning('請先登入')
             router.push('/login')
             return
         }
@@ -177,32 +207,34 @@ const createSellingDraft = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            alert('簡訊驗證碼已發送至您的手機！')
+            toast.info('簡訊驗證碼已發送至您的手機！')
             sellingDraftId.value = data.data.draft_id
             showOtpSection.value = true
         } else {
-            alert(data.msg || '建立訂單草稿失敗')
+            toast.error(data.msg || '建立訂單草稿失敗')
         }
     } catch (error) {
         console.error('Create Draft Error:', error)
-        alert('建立訂單草稿時發生錯誤')
+        toast.error('建立訂單草稿時發生錯誤')
+    } finally {
+        isSubmitting.value = false
     }
 }
 
 const sendOtp = () => {
   // Not used in this flow as Draft API sends it, but keeping if needed for resend later? uesr didn't ask for resend.
-  alert('簡訊驗證碼已發送至您的手機！')
+  toast.info('簡訊驗證碼已發送至您的手機！')
 }
 
 const submitOrder = async () => {
   if (!termsChecked1.value || !termsChecked2.value) {
-    alert('請接受所有條款和條件。')
+    toast.warning('請接受所有條款和條件。')
     return
   }
 
   if (txType.value === 'sell') {
       if (!smsVerificationCode.value) {
-          alert('請輸入簡訊驗證碼')
+          toast.warning('請輸入簡訊驗證碼')
           return
       }
       await confirmSellingOrder()
@@ -212,6 +244,8 @@ const submitOrder = async () => {
 }
 
 const confirmSellingOrder = async () => {
+    if (isSubmitting.value) return
+    isSubmitting.value = true
     try {
         const token = localStorage.getItem('authToken')
         const payload = {
@@ -231,14 +265,16 @@ const confirmSellingOrder = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            alert('銷售訂單提交成功！')
+            toast.success('銷售訂單提交成功！')
             router.push('/account?tab=transactions')
         } else {
-            alert(data.msg || '提交訂單失敗')
+            toast.error(data.msg || '提交訂單失敗')
         }
     } catch (error) {
         console.error('Confirm Order Error:', error)
-        alert('提交訂單時發生錯誤')
+        toast.error('提交訂單時發生錯誤')
+    } finally {
+        isSubmitting.value = false
     }
 }
 
@@ -246,6 +282,8 @@ const orderResult = ref(null)
 const successModalInstance = ref(null)
 
 const createBuyingOrder = async () => {
+    if (isSubmitting.value) return
+    isSubmitting.value = true
     try {
         const payload = {
             store_id: route.query.storeId,
@@ -269,11 +307,13 @@ const createBuyingOrder = async () => {
                 successModalInstance.value.show()
             }
         } else {
-            alert(data.msg || '建立訂單失敗')
+            toast.error(data.msg || '建立訂單失敗')
         }
     } catch (error) {
         console.error('Create Order Error:', error)
-        alert('建立訂單時發生錯誤')
+        toast.error('建立訂單時發生錯誤')
+    } finally {
+        isSubmitting.value = false
     }
 }
 
@@ -309,6 +349,13 @@ const goBack = () => {
             </div>
           </div>
           <div class="card-body p-5">
+            <div v-if="isLoading" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+            
+            <div v-else>
             
             <!-- 1. Exchange Rate -->
             <div class="alert alert-info text-center fw-bold mb-4">
@@ -333,9 +380,9 @@ const goBack = () => {
                       <span class="input-group-text">NT$</span>
                       <input type="text" class="form-control" v-model.lazy="displayTwdAmount">
                     </div>
-                    <div class="form-text text-muted">最低金額: 1000 TWD</div>
+                    <div class="form-text text-muted">最低金額: 1,000 TWD</div>
                     <div v-if="twdAmount > 0 && twdAmount < 1000" class="text-danger small mt-1">
-                      <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1000 TWD
+                      <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1,000 TWD
                     </div>
                   </div>
                   <div class="col-md-2 text-center text-muted pt-4">
@@ -368,9 +415,9 @@ const goBack = () => {
                       <span class="input-group-text">NT$</span>
                       <input type="text" class="form-control" v-model.lazy="displayTwdAmount">
                     </div>
-                    <div class="form-text text-muted">最低金額: 1000 TWD</div>
+                    <div class="form-text text-muted">最低金額: 1,000 TWD</div>
                      <div v-if="twdAmount > 0 && twdAmount < 1000" class="text-danger small mt-1">
-                      <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1000 TWD
+                      <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1,000 TWD
                     </div>
                   </div>
               </template>
@@ -385,8 +432,9 @@ const goBack = () => {
                   {{ acc.store_name }} - {{ acc.account_name }}
                 </option>
               </select>
-               <div v-else class="alert alert-warning mb-0" role="alert">
-                  請新增或確認遊戲帳號
+               <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
+                  <span>請新增或確認遊戲帳號</span>
+                  <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=game')">前往新增</button>
               </div>
             </div>
 
@@ -399,17 +447,21 @@ const goBack = () => {
                    ({{ bank.bank_code }}) {{ bank.account_number }}
                  </option>
               </select>
-              <div v-else class="alert alert-warning mb-0" role="alert">
-                  請新增或確認銀行帳號
+              <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
+                  <span>請新增或確認銀行帳號</span>
+                  <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=bank')">前往新增</button>
               </div>
             </div>
 
             <!-- 6. Confirmation & OTP -->
-            <div v-if="!showOtpSection" class="d-grid">
-              <button class="btn btn-primary btn-lg fw-bold" @click="handleConfirm">確認交易</button>
+            <div v-if="!showOtpSection && selectedGameAccount && selectedBankAccount" class="d-grid">
+              <button class="btn btn-primary btn-lg fw-bold" @click="handleConfirm" :disabled="isSubmitting">
+                <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span v-else>確認交易</span>
+              </button>
             </div>
 
-            <div v-else class="border-top pt-4 mt-4 animate-fade-in">
+            <div v-else-if="showOtpSection && selectedGameAccount && selectedBankAccount" class="border-top pt-4 mt-4 animate-fade-in">
               <h5 class="fw-bold mb-3">安全性驗證</h5>
               
               <div class="form-check mb-2">
@@ -435,7 +487,10 @@ const goBack = () => {
               </div>
 
               <div class="d-grid">
-                <button class="btn btn-success btn-lg fw-bold" @click="submitOrder">提交訂單</button>
+                <button class="btn btn-success btn-lg fw-bold" @click="submitOrder" :disabled="isSubmitting">
+                    <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span v-else>提交訂單</span>
+                </button>
               </div>
             </div>
 
@@ -483,7 +538,7 @@ const goBack = () => {
                 </div>
               </div>
             </div>
-
+           </div>
           </div>
           <div class="card-footer bg-light text-muted small p-4">
             <h6 class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>買賣警語</h6>

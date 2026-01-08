@@ -1,15 +1,17 @@
 <script setup>
+import { RouterView } from 'vue-router'
 import AppHeader from './components/AppHeader.vue'
-import AppFooter from './components/AppFooter.vue'
 import FloatingSidebar from './components/FloatingSidebar.vue'
 import CookieConsent from './components/CookieConsent.vue'
-import { RouterView } from 'vue-router'
+import GlobalToast from './components/GlobalToast.vue'
+import AppFooter from './components/AppFooter.vue'
 </script>
 
 <template>
   <AppHeader />
   <FloatingSidebar />
   <CookieConsent />
+  <GlobalToast />
   <main>
     <RouterView />
   </main>

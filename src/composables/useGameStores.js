@@ -20,8 +20,10 @@ export function useGameStores() {
                     id: store.id,
                     name: store.name,
                     cover_photo: store.cover_photo,
-                    image: store.cover_photo, // Alias for compatibility
-                    // Random price for display since API doesn't list price in store summary easily without points logic
+                    image: store.cover_photo,
+                    buying_rate: store.buying_rate,
+                    selling_rate: store.selling_rate,
+                    // Random price removed/ignored in favor of rates, keeping if needed for backup or just remove
                     price: 'TWD ' + (Math.floor(Math.random() * 500) + 50)
                 }))
             } else {

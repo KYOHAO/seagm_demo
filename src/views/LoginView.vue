@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { useToast } from '../composables/useToast'
 import { handleApiError } from '../utils/apiError'
 
 const router = useRouter()
 const { login } = useAuth()
+const toast = useToast()
 const loginInput = ref('')
 const password = ref('')
 const captchaInput = ref('')
@@ -54,7 +56,8 @@ const handleLogin = async () => {
       // Use useAuth to login
       login(data.data.token, data.data.user)
       
-      alert('登入成功！')
+      //alert('登入成功！')
+      toast.success('登入成功！')
       router.push('/account')
     } else {
       errorMessage.value = handleApiError(data) || '登入失敗。請檢查您的帳號密碼。'

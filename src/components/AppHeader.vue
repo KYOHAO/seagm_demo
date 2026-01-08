@@ -1,17 +1,19 @@
 <script setup>
-import { useAuth } from '../composables/useAuth'
 import { useRouter } from 'vue-router'
+import { useAuth } from '../composables/useAuth'
+import { useToast } from '../composables/useToast'
 
-const { isLoggedIn, logout } = useAuth()
 const router = useRouter()
+const { isLoggedIn, logout } = useAuth()
+const toast = useToast()
 
+//點擊判斷是否登入
 const handleNavClick = (e) => {
   e.preventDefault()
   if (!isLoggedIn.value) {
     router.push('/login')
-  } else {
-    // For now, just show an alert or do nothing as these pages don't exist
-    alert('功能尚未完成!')
+  } else {    
+    toast.info('功能尚未完成!')
   }
 }
 </script>
@@ -103,14 +105,14 @@ const handleNavClick = (e) => {
             </form>
 
             <!-- Desktop Right Actions -->
-            <div class="d-none d-lg-flex align-items-center gap-3">
+            <!--<div class="d-none d-lg-flex align-items-center gap-3">
                <a href="#" class="text-dark fs-5 position-relative">
                  <i class="bi bi-cart"></i>
                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem;">
                    0
                  </span>
                </a>
-            </div>
+            </div>-->
           </div>
         </div>
       </div>

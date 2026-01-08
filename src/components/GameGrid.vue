@@ -1,5 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { formatNumber } from '../utils/format'
 
 const router = useRouter()
 
@@ -42,8 +43,13 @@ const handleGameClick = (game) => {
           <div class="card h-100 border-0 shadow-sm hover-card" @click="handleGameClick(item)">
             <img :src="item.image" class="card-img-top rounded-top" :alt="item.name">
             <div class="card-body p-2 text-center">
-              <h6 class="card-title text-truncate mb-1" :title="item.name">{{ item.name }}</h6>
-              <p class="card-text text-danger fw-bold small mb-0">{{ item.price }}</p>
+              <h6 class="card-title text-truncate mb-1" :title="item.name">
+                {{ item.name }}
+              </h6>
+              <div class="d-inline-block text-start small fw-bold">
+                <div class="text-success">(買) NT$ 1 : {{ formatNumber(item.selling_rate) }}</div>
+                <div class="text-danger">(賣) NT$ 1 : {{ formatNumber(item.buying_rate) }}</div>
+              </div>
             </div>
           </div>
         </div>

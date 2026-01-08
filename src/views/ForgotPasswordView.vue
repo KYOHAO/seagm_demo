@@ -1,9 +1,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from '../composables/useToast'
 import { handleApiError } from '../utils/apiError'
 
 const router = useRouter()
+const toast = useToast()
 const step = ref(1) // 1: Phone Input, 2: Reset Password
 const phoneNumber = ref('')
 const verificationCode = ref('')
@@ -42,7 +44,8 @@ const handlePhoneSubmit = async () => {
 
     if (response.ok && data.code === 0) {
       step.value = 2
-      alert(data.msg || '驗證碼已發送成功。')
+      //alert(data.msg || '驗證碼已發送成功。')
+      toast.success(data.msg || '驗證碼已發送成功。')
     } else {
       errorMessage.value = handleApiError(data) || '驗證碼發送失敗。'
     }
@@ -87,7 +90,8 @@ const handleResetSubmit = async () => {
     const data = await response.json()
 
     if (response.ok && data.code === 0) {
-      alert(data.msg || '密碼重置成功。請登入。')
+      //alert(data.msg || '密碼重置成功。請登入。')
+      toast.success('密碼重置成功。請登入。')
       router.push('/login')
     } else {
       errorMessage.value = handleApiError(data) || '密碼重置失敗。'

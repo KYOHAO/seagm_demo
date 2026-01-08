@@ -1,13 +1,15 @@
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import router from '../router'
 import { apiFetch } from '../utils/api'
 
+console.log('useAuth: Router imported:', router)
+
+
+// const router = useRouter() - Don't use composable at top level
 const isLoggedIn = ref(!!localStorage.getItem('authToken'))
 const token = ref(localStorage.getItem('authToken'))
 
 export function useAuth() {
-    const router = useRouter()
-
     const login = (newToken, user) => {
         localStorage.setItem('authToken', newToken)
         localStorage.setItem('userInfo', JSON.stringify(user))
@@ -30,7 +32,11 @@ export function useAuth() {
             localStorage.removeItem('userInfo')
             token.value = null
             isLoggedIn.value = false
-            window.location.href = '/login' // Force reload/redirect to ensure clean state
+            if (router && router.push) {
+                router.push('/login')
+            } else {
+                window.location.href = '/login'
+            }
         }
     }
 

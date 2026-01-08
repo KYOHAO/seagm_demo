@@ -2,12 +2,14 @@
 import { ref, onMounted, watch } from 'vue'
 import { formatNumber } from '../utils/format'
 import { useRouter, useRoute } from 'vue-router'
+import { useToast } from '../composables/useToast'
 import { Modal } from 'bootstrap'
 import { useGameStores } from '../composables/useGameStores'
 import { handleApiError } from '../utils/apiError'
 import { useAuth } from '../composables/useAuth'
 import { apiFetch } from '../utils/api'
 
+const toast = useToast()
 const router = useRouter()
 const route = useRoute()
 const { logout } = useAuth()
@@ -77,7 +79,7 @@ const sellingPagination = ref({
 const isHistoryLoading = ref(false)
 
 onMounted(() => {
-    fetchUserInfo()
+    //fetchUserInfo()
     
     // Handle Tab Param
     const tab = route.query.tab
@@ -89,6 +91,8 @@ onMounted(() => {
         activeMenu.value = 'game_accounts'
     } else if (tab === 'orders') {
         activeMenu.value = 'orders'
+    } else if (tab === 'account') {
+        activeMenu.value = 'settings'
     } else {
         activeMenu.value = 'orders' // Default
     }
@@ -108,6 +112,8 @@ watch(activeMenu, (newVal) => {
         } else {
             fetchSellingOrders()
         }
+    } else if (newVal === 'settings') {
+        fetchUserInfo()
     }
 })
 
@@ -164,10 +170,23 @@ const fetchSellingOrders = async (page = 1) => {
     }
 }
 
+const showKycPrompt = () => {
+    setTimeout(() => {
+        const modalEl = document.getElementById('kycPromptModal')
+        if (modalEl) {
+            kycPromptModalInstance.value = new Modal(modalEl)
+            kycPromptModalInstance.value.show()
+        }
+    }, 500)
+}
+
+const isUserInfoLoading = ref(false)
+
 const fetchUserInfo = async () => {
     const token = localStorage.getItem('authToken')
     if (!token) return
 
+    isUserInfoLoading.value = true
     try {
         const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
             method: 'GET'
@@ -180,14 +199,7 @@ const fetchUserInfo = async () => {
             
             // Auto Prompt for KYC if level is 1
             if (userInfo.value.kyc_level === 1) {
-                // Ensure DOM is ready or wait nextTick if needed, but usually OK here in async
-                setTimeout(() => {
-                    const modalEl = document.getElementById('kycPromptModal')
-                    if (modalEl) {
-                        kycPromptModalInstance.value = new Modal(modalEl)
-                        kycPromptModalInstance.value.show()
-                    }
-                }, 500)
+                showKycPrompt()
             }
 
         } else {
@@ -201,6 +213,8 @@ const fetchUserInfo = async () => {
         }
     } catch (error) {
         console.error('Fetch User Info Error:', error)
+    } finally {
+        isUserInfoLoading.value = false
     }
 }
 
@@ -257,7 +271,8 @@ const fetchGameAccounts = async () => {
 
 const openAddGameModal = () => {
     if(userInfo.value.kyc_level !== 2) {
-        alert('請先完成身分驗證')
+        toast.warning('請先完成身分驗證')
+        showKycPrompt()
         return
     }
 
@@ -274,7 +289,7 @@ const handleAddGameSubmit = async () => {
     const { store_id, account_name } = addGameForm.value
 
     if (!store_id || !account_name) {
-        alert('請填寫所有欄位。')
+        toast.warning('請填寫所有欄位。')
         return
     }
 
@@ -293,17 +308,17 @@ const handleAddGameSubmit = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            alert('遊戲帳號綁定申請成功！驗證碼已發送。')
+            toast.info('遊戲帳號綁定申請成功！驗證碼已發送。')
             newGameAccountId.value = data.data.game_account.id
             gameStep.value = 2
         } else {
              const errorMsg = handleApiError(data)
              //alert(errorMsg || '綁定失敗。')
-             alert('綁定失敗。')
+             toast.error('綁定失敗。')
         }
     } catch (error) {
         console.error('Bind Game Account Error:', error)
-        alert('發生錯誤，請稍後再試。')
+        toast.error('發生錯誤，請稍後再試。')
     } finally {
         isAddGameLoading.value = false
     }
@@ -311,7 +326,7 @@ const handleAddGameSubmit = async () => {
 
 const handleGameVerifySubmit = async () => {
     if (!addGameForm.value.verification_code || addGameForm.value.verification_code.length !== 6) {
-        alert('請輸入6位數驗證碼。')
+        toast.warning('請輸入6位數驗證碼。')
         return
     }
     
@@ -329,7 +344,7 @@ const handleGameVerifySubmit = async () => {
         const data = await response.json()
         
         if (response.ok && data.code === 0) {
-            alert('遊戲帳號綁定成功！')
+            toast.success('遊戲帳號綁定成功！')
              if (addGameModalInstance.value) {
                 addGameModalInstance.value.hide()
             }
@@ -337,11 +352,11 @@ const handleGameVerifySubmit = async () => {
         } else {
             const errorMsg = handleApiError(data)
             //alert(errorMsg || '驗證失敗。')
-            alert('驗證失敗。')
+            toast.error('驗證失敗。')
         }
     } catch (error) {
         console.error('Verify Game Account Error:', error)
-          alert('發生錯誤，請稍後再試。')
+          toast.error('發生錯誤，請稍後再試。')
     } finally {
         isAddGameLoading.value = false
     }
@@ -349,7 +364,8 @@ const handleGameVerifySubmit = async () => {
 
 const openAddBankModal = () => {
     if(userInfo.value.kyc_level !== 2) {
-        alert('請先完成身分驗證')
+        toast.warning('請先完成身分驗證')
+        showKycPrompt()
         return
     }
 
@@ -369,7 +385,7 @@ const handleFileChange = (event) => {
     const file = event.target.files[0]
     if (file) {
         if (file.size > 5 * 1024 * 1024) {
-            alert('檔案大小不能超過 5MB')
+            toast.warning('檔案大小不能超過 5MB')
             event.target.value = ''
             addBankForm.value.cover_photo = null
             return
@@ -382,27 +398,27 @@ const handleAddBankSubmit = async () => {
     const { bank_code, branch_code, account_number, cover_photo } = addBankForm.value
     
     if (!bank_code || !branch_code || !account_number) {
-        alert('請填寫所有欄位。')
+        toast.warning('請填寫所有欄位。')
         return
     }
 
     if (!cover_photo) {
-        alert('請上傳存摺封面照片。')
+        toast.warning('請上傳存摺封面照片。')
         return
     }
     
     // Basic validation
     if (bank_code.length !== 3) {
-        alert('銀行代碼必須為3碼。')
+        toast.warning('銀行代碼必須為3碼。')
         return
     }
     if (branch_code.length !== 4) {
-        alert('分行代碼必須為4碼。')
+        toast.warning('分行代碼必須為4碼。')
         return
     }
 
     if (account_number.length > 14) {
-         alert('銀行帳號最多14碼。')
+         toast.warning('銀行帳號最多14碼。')
          return
     }
 
@@ -432,17 +448,17 @@ const handleAddBankSubmit = async () => {
         const data = await response.json()
         
         if (response.ok && data.code === 0) {
-            alert('銀行帳號綁定申請成功！驗證碼已發送。')
+            toast.info('銀行帳號綁定申請成功！驗證碼已發送。')
             bankAccountId.value = data.data.bank_account.id
             bankStep.value = 2
         } else {
              const errorMsg = handleApiError(data)
              //alert(errorMsg || '綁定失敗。')
-             alert('綁定失敗。')
+             toast.error('綁定失敗。')
         }
     } catch (error) {
         console.error('綁定銀行帳號錯誤:', error)
-        alert('發生錯誤，請稍後再試。')
+        toast.error('發生錯誤，請稍後再試。')
     } finally {
         isAddBankLoading.value = false
 
@@ -497,7 +513,7 @@ const handleBankChange = () => {
 
 const handleBankVerifySubmit = async () => {
     if (!addBankForm.value.verification_code || addBankForm.value.verification_code.length !== 6) {
-        alert('請輸入6位數驗證碼。')
+        toast.warning('請輸入6位數驗證碼。')
         return
     }
     
@@ -515,7 +531,7 @@ const handleBankVerifySubmit = async () => {
         const data = await response.json()
         
         if (response.ok && data.code === 0) {
-            alert('銀行帳號驗證成功，請等待審核。')
+            toast.success('銀行帳號驗證成功，請等待審核。')
              if (addBankModalInstance.value) {
                 addBankModalInstance.value.hide()
             }
@@ -523,11 +539,11 @@ const handleBankVerifySubmit = async () => {
         } else {
             const errorMsg = handleApiError(data)
             //alert(errorMsg || '驗證失敗。')
-            alert('驗證失敗。')
+            toast.error('驗證失敗。')
         }
     } catch (error) {
         console.error('Verify Bank Error:', error)
-          alert('發生錯誤，請稍後再試。')
+          toast.error('發生錯誤，請稍後再試。')
     } finally {
         isAddBankLoading.value = false
     }
@@ -536,7 +552,7 @@ const handleBankVerifySubmit = async () => {
 
 const openChangePasswordModal = async () => {
   if (!userInfo.value.phone_number) {
-      alert('找不到電話號碼。')
+      toast.error('找不到電話號碼。')
       return
   }
   
@@ -556,7 +572,7 @@ const openChangePasswordModal = async () => {
 
     if (response.ok && data.code === 0) {
       //alert(data.msg || '發送驗證碼成功。')
-      alert('發送驗證碼成功。')
+      toast.success('發送驗證碼成功。')
       changePasswordForm.value = { code: '', password: '', confirmPassword: '' }
       
       const modalEl = document.getElementById('changePasswordModal')
@@ -567,11 +583,11 @@ const openChangePasswordModal = async () => {
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || '發送驗證碼失敗。')
-      alert('發送驗證碼失敗。')
+      toast.error('發送驗證碼失敗。')
     }
   } catch (error) {
     console.error('Send Code Error:', error)
-    alert('發生錯誤，請稍後再試。')
+    toast.error('發生錯誤，請稍後再試。')
   } finally {
     isChangePasswordLoading.value = false
   }
@@ -581,22 +597,22 @@ const handleChangePasswordSubmit = async () => {
     const { code, password, confirmPassword } = changePasswordForm.value
     
     if (!code || !password || !confirmPassword) {
-        alert('請填寫所有欄位。')
+        toast.warning('請填寫所有欄位。')
         return
     }
     
     if (code.length !== 6) {
-      alert('請輸入6位數的驗證碼。')
+      toast.warning('請輸入6位數的驗證碼。')
       return
     }
 
     if (password !== confirmPassword) {
-        alert('密碼不一致。')
+        toast.warning('密碼不一致。')
         return
     }
 
     if (password.length < 8) {
-        alert('密碼至少需要8位。')
+        toast.warning('密碼至少需要8位。')
         return
     }
 
@@ -616,7 +632,7 @@ const handleChangePasswordSubmit = async () => {
 
         if (response.ok && data.code === 0) {
             //alert(data.msg || '修改密碼成功。')
-            alert('修改密碼成功。')
+            toast.success('修改密碼成功。')
             if (changePasswordModalInstance.value) {
                 changePasswordModalInstance.value.hide()
             }
@@ -624,11 +640,11 @@ const handleChangePasswordSubmit = async () => {
         } else {
             const errorMsg = handleApiError(data)
             //alert(errorMsg || '修改密碼失敗。')
-            alert('修改密碼失敗。')
+            toast.error('修改密碼失敗。')
         }
     } catch (error) {
         console.error('Change Password Error:', error)
-        alert('發生錯誤，請稍後再試。')
+        toast.error('發生錯誤，請稍後再試。')
     } finally {
         isChangePasswordLoading.value = false
     }
@@ -652,16 +668,16 @@ const sendKYCInitiate = async () => {
     const data = await response.json()
     console.log(data)
     if (response.ok && data.code === 0) {
-      alert('KYC 啟動成功!')
+      toast.success('KYC 啟動成功!')
       window.location.href = data.data.redirect_url
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || 'Failed to initiate KYC.')
-      alert('KYC 啟動失敗。')
+      toast.error('KYC 啟動失敗。')
     }
   } catch (error) {
     console.error('KYC Error:', error)
-    alert('發生錯誤，請稍後再試。')
+    toast.error('發生錯誤，請稍後再試。')
   } finally {
     isKycLoading.value = false
   }
@@ -683,7 +699,7 @@ const goToKycInfo = () => {
 
 const openEmailModal = () => {
   if(userInfo.value.kyc_level !== 2) {
-      alert('請先完成身分驗證')
+      toast.warning('請先完成身分驗證')
       return
   }
   
@@ -698,7 +714,7 @@ const openEmailModal = () => {
 
 const sendEmailCode = async () => {
   if (!emailForm.value.email) {
-    alert('請輸入您的電子郵件地址。')
+    toast.warning('請輸入您的電子郵件地址。')
     return
   }
   
@@ -713,16 +729,16 @@ const sendEmailCode = async () => {
     const data = await response.json()
 
     if (response.ok && data.code === 0) {
-      alert('驗證碼已發送到您的電子郵件。')
+      toast.info('驗證碼已發送到您的電子郵件。')
       emailStep.value = 2
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || '發送驗證碼失敗。')
-      alert('發送驗證碼失敗。')
+      toast.error('發送驗證碼失敗。')
     }
   } catch (error) {
     console.error('Email Verify Error:', error)
-    alert('發生錯誤，請稍後再試。')
+    toast.error('發生錯誤，請稍後再試。')
   } finally {
     isEmailLoading.value = false
   }
@@ -730,7 +746,7 @@ const sendEmailCode = async () => {
 
 const confirmEmail = async () => {
   if (!emailForm.value.code) {
-    alert('請輸入驗證碼。')
+    toast.warning('請輸入驗證碼。')
     return
   }
 
@@ -745,7 +761,7 @@ const confirmEmail = async () => {
     const data = await response.json()
 
     if (response.ok && data.code === 0) {
-      alert('Email 驗證成功!')
+      toast.success('Email 驗證成功!')
       // Update local user info
       if (data.data && data.data.user) {
         userInfo.value = data.data.user
@@ -760,11 +776,11 @@ const confirmEmail = async () => {
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || '驗證失敗。')
-      alert('Email 驗證失敗。')
+      toast.error('Email 驗證失敗。')
     }
   } catch (error) {
     console.error('Email Confirm Error:', error)
-    alert('發生錯誤，請稍後再試。')
+    toast.error('發生錯誤，請稍後再試。')
   } finally {
     isEmailLoading.value = false
   }
@@ -970,21 +986,25 @@ const confirmEmail = async () => {
               </div>
             </div>
             <div v-else-if="activeMenu === 'settings'">
-              <form>
+              <h5 class="mb-3 fw-bold">帳號設定</h5>
+              
+              <div v-if="isUserInfoLoading" class="text-center py-5">
+                  <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                  </div>
+              </div>
+
+              <form v-else>
                 <div class="mb-3">
                   <label class="form-label">姓名</label>
-                  <input type="text" class="form-control" :value="userInfo.full_name" disabled>
+                  <input type="text" class="form-control" :value="userInfo.name" disabled>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">手機號碼</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" :value="userInfo.phone_number" disabled>
-                    <!-- Phone is usually fixed, but if we wanted to change password we do it here? 
-                         User asked to add password field UNDER phone number. -->
-                  </div>
+                  <input type="text" class="form-control" :value="userInfo.phone_number" disabled>
                 </div>
-                <div class="mb-3">
-                  <label class="form-label">密碼</label>
+                 <div class="mb-3">
+                  <label class="form-label">登入密碼</label>
                   <div class="input-group">
                     <input type="password" class="form-control" value="********" disabled>
                     <button class="btn btn-outline-primary" type="button" @click="openChangePasswordModal">

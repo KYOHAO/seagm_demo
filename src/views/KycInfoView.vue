@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { handleApiError } from '../utils/apiError'
+import { useToast } from '../composables/useToast'
 
 const router = useRouter()
+const toast = useToast()
 const isLoading = ref(false)
 const errorMessage = ref('')
 const formData = ref({
@@ -37,7 +39,8 @@ const handleSubmit = async () => {
     const data = await response.json()
 
     if (response.ok && data.code === 0) {
-      alert('KYC 資訊已驗證並儲存成功!')
+      //alert('KYC 資訊已驗證並儲存成功!')
+      toast.success('KYC 資訊已驗證並儲存成功!')
       router.push('/account')
     } else {
       //errorMessage.value = handleApiError(data) || '驗證失敗，請檢查您的資訊。'
