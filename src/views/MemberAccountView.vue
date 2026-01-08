@@ -409,17 +409,24 @@ const handleAddBankSubmit = async () => {
     const token = localStorage.getItem('authToken')
     
     try {
-        const formData = new FormData()
-        formData.append('bank_code', bank_code)
-        formData.append('branch_code', branch_code)
-        formData.append('account_number', account_number)
-        formData.append('cover_photo', cover_photo)
+        const myHeaders = new Headers();
+        myHeaders.append("Accept", "application/json");
+        myHeaders.append("Authorization", "Bearer " + token);
 
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/bind`, {
-            method: 'POST',
-            body: formData,
-            headers: {} // No content-type for formData
-        })
+        const formdata = new FormData();
+        formdata.append("bank_code", bank_code);
+        formdata.append("branch_code", branch_code);
+        formdata.append("account_number", account_number);
+        formdata.append("cover_photo", cover_photo);
+
+        const requestOptions = {
+            method: "POST",
+            headers: myHeaders,
+            body: formdata,
+            redirect: "follow"
+        };
+
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/bind`, requestOptions)
 
         const data = await response.json()
         
