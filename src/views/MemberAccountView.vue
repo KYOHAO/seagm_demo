@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { formatNumber } from '../utils/format'
 import { useRouter, useRoute } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { useGameStores } from '../composables/useGameStores'
@@ -898,7 +899,7 @@ const confirmEmail = async () => {
                                   <td>{{ order.id }}</td>
                                   <td>{{ getStoreName(order.store_id) }}</td>
                                   <td>{{ order.quantity }}</td>
-                                  <td>{{ order.total_price }}</td>
+                                  <td>{{ formatNumber(order.total_price) }}</td>
                                   <td>
                                       {{ order.payments_label }}
                                       <span v-if="order.payments_sub" class="badge bg-light text-dark">{{ order.payments_sub }}</span>
@@ -931,7 +932,7 @@ const confirmEmail = async () => {
                    <div v-else class="table-responsive">
                       <table class="table table-hover align-middle small">
                           <thead class="table-light">
-                              <tr>
+                              <tr class="text-center">
                                   <th>訂單 ID</th>
                                   <th>商戶</th>
                                   <th>數量</th>
@@ -944,8 +945,8 @@ const confirmEmail = async () => {
                               <tr v-for="order in sellingOrders" :key="order.id">
                                   <td>{{ order.id }}</td>
                                   <td>{{ getStoreName(order.store_id) }}</td>
-                                  <td>{{ order.quantity }}</td>
-                                  <td>{{ order.total_price }}</td>
+                                  <td class="text-end">{{ formatNumber(order.quantity) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.total_price) }}</td>
                                   <td><span class="badge bg-secondary">{{ order.status_label }}</span></td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
                               </tr>

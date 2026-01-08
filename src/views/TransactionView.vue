@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { formatNumber, parseNumber } from '../utils/format'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { useUserAccounts } from '../composables/useUserAccounts'
@@ -83,6 +84,20 @@ onMounted(async () => {
 
 const twdAmount = ref(0)
 const gameCurrencyAmount = ref(0)
+
+const displayTwdAmount = computed({
+    get: () => formatNumber(twdAmount.value),
+    set: (val) => {
+        twdAmount.value = parseNumber(val)
+    }
+})
+
+const displayGameCurrencyAmount = computed({
+    get: () => formatNumber(gameCurrencyAmount.value),
+    set: (val) => {
+        gameCurrencyAmount.value = parseNumber(val)
+    }
+})
 const isUpdating = ref(false)
 
 const promotions = ['No Promotion', 'Summer Sale - 5% Bonus', 'New User - 100 Extra Coins']
@@ -297,7 +312,7 @@ const goBack = () => {
             
             <!-- 1. Exchange Rate -->
             <div class="alert alert-info text-center fw-bold mb-4">
-              匯率：1 遊戲幣 = {{ exchangeRate }} 新台幣
+              匯率：{{ exchangeRate }} 遊戲幣 = 1 新台幣
             </div>
 
             <!-- 2. Promotion -->
@@ -316,7 +331,7 @@ const goBack = () => {
                     <label class="form-label fw-bold">新台幣 (TWD Amount)</label>
                     <div class="input-group">
                       <span class="input-group-text">NT$</span>
-                      <input type="number" class="form-control" v-model.lazy="twdAmount" min="0">
+                      <input type="text" class="form-control" v-model.lazy="displayTwdAmount">
                     </div>
                     <div class="form-text text-muted">最低金額: 1000 TWD</div>
                     <div v-if="twdAmount > 0 && twdAmount < 1000" class="text-danger small mt-1">
@@ -329,7 +344,7 @@ const goBack = () => {
                   <div class="col-md-5">
                     <label class="form-label fw-bold">遊戲幣 (Game Currency)</label>
                     <div class="input-group">
-                      <input type="number" class="form-control" v-model.lazy="gameCurrencyAmount" min="0" disabled>
+                      <input type="text" class="form-control" v-model.lazy="displayGameCurrencyAmount" disabled>
                       <span class="input-group-text">Coins</span>
                     </div>
                   </div>
@@ -340,7 +355,7 @@ const goBack = () => {
                    <div class="col-md-5">
                     <label class="form-label fw-bold">遊戲幣 (Game Currency)</label>
                     <div class="input-group">
-                      <input type="number" class="form-control" v-model.lazy="gameCurrencyAmount" min="0" disabled>
+                      <input type="text" class="form-control" v-model.lazy="displayGameCurrencyAmount" disabled>
                       <span class="input-group-text">Coins</span>
                     </div>
                   </div>
@@ -351,7 +366,7 @@ const goBack = () => {
                     <label class="form-label fw-bold">台幣 (TWD Amount)</label>
                     <div class="input-group">
                       <span class="input-group-text">NT$</span>
-                      <input type="number" class="form-control" v-model.lazy="twdAmount" min="1000">
+                      <input type="text" class="form-control" v-model.lazy="displayTwdAmount">
                     </div>
                     <div class="form-text text-muted">最低金額: 1000 TWD</div>
                      <div v-if="twdAmount > 0 && twdAmount < 1000" class="text-danger small mt-1">
@@ -440,7 +455,7 @@ const goBack = () => {
                           <tr><th>點數類型 ID (Point ID)</th><td>{{ orderResult.point_id }}</td></tr>
                           <tr><th>數量 (Quantity)</th><td>{{ orderResult.quantity }}</td></tr>
                           <tr><th>單價 (Unit Price)</th><td>{{ orderResult.unit_price }}</td></tr>
-                          <tr><th>總價 (Total Price)</th><td>{{ orderResult.total_price }}</td></tr>
+                          <tr><th>總價 (Total Price)</th><td>{{ formatNumber(orderResult.total_price) }}</td></tr>
                           <!--<tr><th>付款方式 (Payment)</th><td>{{ orderResult.payments_label }} ({{ orderResult.payments }})</td></tr>-->
                           <!--<tr><th>付款子類型 (Sub)</th><td>{{ orderResult.payments_sub || '-' }}</td></tr>-->
                           
