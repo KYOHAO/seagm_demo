@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import router from '../router'
 import { apiFetch } from '../utils/api'
+import { removeCookie } from '../utils/cookies'
 
 console.log('useAuth: Router imported:', router)
 
@@ -30,6 +31,7 @@ export function useAuth() {
         } finally {
             localStorage.removeItem('authToken')
             localStorage.removeItem('userInfo')
+            removeCookie('userInfo')
             token.value = null
             isLoggedIn.value = false
             if (router && router.push) {

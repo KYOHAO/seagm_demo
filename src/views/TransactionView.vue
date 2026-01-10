@@ -77,14 +77,13 @@ const { gameAccounts, bankAccounts, fetchGameAccounts, fetchBankAccounts } = use
 
 const validBankAccounts = computed(() => {
     if (!bankAccounts.value) return []
-    return bankAccounts.value //暫時通過
-    //return bankAccounts.value.filter(acc => acc.status === 2)
+    return bankAccounts.value.filter(acc => acc.status === 2)
 })
 
 const validGameAccounts = computed(() => {
     if (!gameAccounts.value) return []
     const currentStoreId = route.query.storeId
-    return gameAccounts.value.filter(acc => acc.status === 1 && acc.store_id === currentStoreId)
+    return gameAccounts.value.filter(acc => acc.status === 2 && acc.store_id === currentStoreId)
 })
 
 onMounted(async () => {
@@ -433,8 +432,8 @@ const goBack = () => {
                 </option>
               </select>
                <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
-                  <span>請新增或確認遊戲帳號</span>
-                  <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=game')">前往新增</button>
+                  <span>請新增或確認遊戲帳號狀態</span>
+                  <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=game')">前往查看</button>
               </div>
             </div>
 
@@ -449,7 +448,7 @@ const goBack = () => {
               </select>
               <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
                   <span>請新增或確認銀行帳號</span>
-                  <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=bank')">前往新增</button>
+                  <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=bank')">前往查看</button>
               </div>
             </div>
 

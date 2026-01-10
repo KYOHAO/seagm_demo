@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { formatNumber } from '../utils/format'
+import { getCookie, setCookie } from '../utils/cookies'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '../composables/useToast'
 import { Modal } from 'bootstrap'
@@ -19,7 +20,7 @@ const stats = ref({
   todaySell: 0,
   balance: 0
 })
-const userInfo = ref({})
+const userInfo = ref(getCookie('userInfo') || {})
 const kycPromptModalInstance = ref(null)
 const emailModalInstance = ref(null)
 const emailStep = ref(1)
@@ -79,7 +80,7 @@ const sellingPagination = ref({
 const isHistoryLoading = ref(false)
 
 onMounted(() => {
-    //fetchUserInfo()
+    fetchUserInfo()
     
     // Handle Tab Param
     const tab = route.query.tab
@@ -113,7 +114,7 @@ watch(activeMenu, (newVal) => {
             fetchSellingOrders()
         }
     } else if (newVal === 'settings') {
-        fetchUserInfo()
+        //fetchUserInfo()
     }
 })
 
@@ -195,7 +196,9 @@ const fetchUserInfo = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            userInfo.value = data.data.user
+            const userData = data.data.user
+            userInfo.value = userData
+            setCookie('userInfo', userData)
             
             // Auto Prompt for KYC if level is 1
             if (userInfo.value.kyc_level === 1) {
@@ -220,6 +223,31 @@ const fetchUserInfo = async () => {
 
 const bankAccounts = ref([])
 const isBankLoading = ref(false)
+const isDeletingBank = ref(false)
+
+const deleteBankAccount = async () => {
+    if (!confirm('確定要刪除銀行帳號嗎？')) return
+
+    isDeletingBank.value = true
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account`, {
+            method: 'DELETE'
+        })
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            toast.success('銀行帳號已刪除')
+            await fetchBankAccounts()
+        } else {
+            const errorMsg = handleApiError(data)
+            toast.error(errorMsg || '刪除失敗')
+        }
+    } catch (error) {
+        console.error('Delete Bank Account Error:', error)
+        toast.error('發生錯誤，請稍後再試')
+    } finally {
+        isDeletingBank.value = false
+    }
+}
 const fetchBankAccounts = async () => {
     isBankLoading.value = true
     const token = localStorage.getItem('authToken')
@@ -1039,8 +1067,12 @@ const confirmEmail = async () => {
             <div v-else-if="activeMenu === 'bank_accounts'">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0 fw-bold">我的銀行帳號</h5>
-                    <button class="btn btn-primary btn-sm" @click="openAddBankModal">
+                    <button v-if="bankAccounts.length === 0" class="btn btn-primary btn-sm" @click="openAddBankModal">
                         <i class="bi bi-plus-lg me-1"></i> 新增銀行帳號
+                    </button>
+                    <button v-else class="btn btn-danger btn-sm" @click="deleteBankAccount" :disabled="isDeletingBank">
+                        <span v-if="isDeletingBank" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <i v-else class="bi bi-trash me-1"></i> 刪除銀行帳號
                     </button>
                 </div>
                 <div v-if="isBankLoading" class="text-center py-5">
@@ -1105,7 +1137,7 @@ const confirmEmail = async () => {
                                 <td>{{ getStoreName(account.store_id) }}</td>
                                 <td>{{ account.account_name }}</td>
                                 <td>
-                                    <span class="badge" :class="account.status === 1 ? 'bg-success' : 'bg-secondary'">
+                                    <span class="badge" :class="account.status === 2 ? 'bg-success' : 'bg-secondary'">
                                         {{ account.status_label }}
                                     </span>
                                 </td>
