@@ -39,7 +39,7 @@ const handleLogin = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/login`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +60,8 @@ const handleLogin = async () => {
       toast.success('登入成功！')
       router.push('/account')
     } else {
-      errorMessage.value = handleApiError(data) || '登入失敗。請檢查您的帳號密碼。'
+      //errorMessage.value = handleApiError(data) || '登入失敗。請檢查您的帳號密碼。'
+      errorMessage.value = '登入失敗。請檢查您的帳號密碼。'
     }
   } catch (error) {
     console.error('Login Error:', error)

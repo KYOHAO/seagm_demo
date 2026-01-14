@@ -30,7 +30,7 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/forgot-password`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -74,7 +74,7 @@ const handleResetSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/reset-password', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -11,7 +11,7 @@ export function useGameStores() {
         isLoading.value = true
         error.value = null
         try {
-            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/stores`)
+            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/stores`)
             const data = await response.json()
 
             if (response.ok && data.code === 0) {

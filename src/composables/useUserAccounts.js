@@ -13,7 +13,7 @@ export function useUserAccounts() {
         isLoading.value = true
         error.value = null
         try {
-            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`)
+            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/me/game-account`)
             const data = await response.json()
             if (response.ok && data.code === 0) {
                 // Fetch stores to map names using composable
@@ -46,7 +46,7 @@ export function useUserAccounts() {
         isLoading.value = true
         error.value = null
         try {
-            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`)
+            const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/me/bank-account`)
             const data = await response.json()
             if (response.ok && data.code === 0) {
                 bankAccounts.value = data.data.bank_accounts

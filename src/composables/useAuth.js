@@ -3,7 +3,7 @@ import router from '../router'
 import { apiFetch } from '../utils/api'
 import { removeCookie } from '../utils/cookies'
 
-console.log('useAuth: Router imported:', router)
+//console.log('useAuth: Router imported:', router)
 
 
 // const router = useRouter() - Don't use composable at top level
@@ -22,7 +22,7 @@ export function useAuth() {
         try {
             const token = localStorage.getItem('authToken')
             if (token) {
-                await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/logout`, {
+                await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/logout`, {
                     method: 'POST'
                 })
             }

@@ -9,6 +9,7 @@ import { useGameStores } from '../composables/useGameStores'
 import { handleApiError } from '../utils/apiError'
 import { useAuth } from '../composables/useAuth'
 import { apiFetch } from '../utils/api'
+import { getBuyingOrderStatusInfo, getSellingOrderStatusInfo } from '../utils/statusMapping'
 
 const toast = useToast()
 const router = useRouter()
@@ -138,7 +139,7 @@ const getStoreName = (storeId) => {
 const fetchBuyingOrders = async (page = 1) => {
     isHistoryLoading.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/buying?page=${page}`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/buying?page=${page}`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             buyingOrders.value = data.data.orders
@@ -156,7 +157,7 @@ const fetchBuyingOrders = async (page = 1) => {
 const fetchSellingOrders = async (page = 1) => {
     isHistoryLoading.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling?page=${page}`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling?page=${page}`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             sellingOrders.value = data.data.orders
@@ -189,7 +190,7 @@ const fetchUserInfo = async () => {
 
     isUserInfoLoading.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/me`, {
             method: 'GET'
         })
 
@@ -199,10 +200,14 @@ const fetchUserInfo = async () => {
             const userData = data.data.user
             userInfo.value = userData
             setCookie('userInfo', userData)
-            
+            console.log(userData);
             // Auto Prompt for KYC if level is 1
             if (userInfo.value.kyc_level === 1) {
-                showKycPrompt()
+                if (userInfo.value.face_pass === false) {
+                    showKycPrompt()
+                }else{
+                    toast.info('跳轉至身分驗證表單')
+                }
             }
 
         } else {
@@ -230,7 +235,7 @@ const deleteBankAccount = async () => {
 
     isDeletingBank.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, {
             method: 'DELETE'
         })
         const data = await response.json()
@@ -254,7 +259,7 @@ const fetchBankAccounts = async () => {
     if (!token) return
 
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/bank-account`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/me/bank-account`, {
             method: 'GET'
         })
 
@@ -278,7 +283,7 @@ const fetchGameAccounts = async () => {
     if (!token) return
 
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/me/game-account`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/me/game-account`, {
             method: 'GET'
         })
 
@@ -325,7 +330,7 @@ const handleAddGameSubmit = async () => {
     const token = localStorage.getItem('authToken')
     
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/bind`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/bind`, {
             method: 'POST',
             body: JSON.stringify({
                 store_id,
@@ -361,7 +366,7 @@ const handleGameVerifySubmit = async () => {
     isAddGameLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/game-account/verify`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/verify`, {
             method: 'POST',
             body: JSON.stringify({
                 game_account_id: newGameAccountId.value,
@@ -471,7 +476,7 @@ const handleAddBankSubmit = async () => {
             redirect: "follow"
         };
 
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/bind`, requestOptions)
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, requestOptions)
 
         const data = await response.json()
         
@@ -496,7 +501,7 @@ const handleAddBankSubmit = async () => {
 const fetchSupportedBanks = async () => {
     isBankListLoading.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/supported-banks`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             bankList.value = data.data.banks
@@ -521,7 +526,7 @@ const fetchBankBranches = async (bankCode) => {
     addBankForm.value.branch_code = '' 
     
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/supported-banks/${bankCode}/branches`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/supported-banks/${bankCode}/branches`)
         const data = await response.json()
         if (response.ok && data.code === 0) {
             branchList.value = data.data.branches
@@ -548,7 +553,7 @@ const handleBankVerifySubmit = async () => {
     isAddBankLoading.value = true
     const token = localStorage.getItem('authToken')
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/bank-account/verify`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/verify`, {
             method: 'POST',
             body: JSON.stringify({
                 bank_account_id: bankAccountId.value,
@@ -591,7 +596,7 @@ const openChangePasswordModal = async () => {
   isChangePasswordLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/forgot-password`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
       method: 'POST',
       body: JSON.stringify({ phone_number: userInfo.value.phone_number })
     })
@@ -646,7 +651,7 @@ const handleChangePasswordSubmit = async () => {
 
     isChangePasswordLoading.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/reset-password`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
             method: 'POST',
             body: JSON.stringify({
                 phone_number: userInfo.value.phone_number,
@@ -685,7 +690,7 @@ const sendKYCInitiate = async () => {
   isKycLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/kyc/initiate`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/kyc/initiate`, {
       method: 'POST',
       body: JSON.stringify({
           success_url: `${import.meta.env.VITE_FRONTEND_BASE_URL}/kyc-info`,
@@ -749,7 +754,7 @@ const sendEmailCode = async () => {
   isEmailLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await apiFetch('https://dealer-agent.nygamedepot.com/api/v1/email/verify', {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/email/verify`, {
       method: 'POST',
       body: JSON.stringify({ email: emailForm.value.email })
     })
@@ -781,7 +786,7 @@ const confirmEmail = async () => {
   isEmailLoading.value = true
   const token = localStorage.getItem('authToken')
   try {
-    const response = await apiFetch('https://dealer-agent.nygamedepot.com/api/v1/email/confirm', {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/email/confirm`, {
       method: 'POST',
       body: JSON.stringify({ verification_code: emailForm.value.code })
     })
@@ -942,13 +947,17 @@ const confirmEmail = async () => {
                               <tr v-for="order in buyingOrders" :key="order.id">
                                   <td>{{ order.id }}</td>
                                   <td>{{ getStoreName(order.store_id) }}</td>
-                                  <td>{{ order.quantity }}</td>
-                                  <td>{{ formatNumber(order.total_price) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.quantity) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.total_price) }}</td> 
                                   <td>
                                       {{ order.payments_label }}
                                       <span v-if="order.payments_sub" class="badge bg-light text-dark">{{ order.payments_sub }}</span>
                                   </td>
-                                  <td><span class="badge bg-secondary">{{ order.status_label }}</span></td>
+                                  <td>
+                                      <span class="badge" :class="[getBuyingOrderStatusInfo(order.status).class, getBuyingOrderStatusInfo(order.status).text]">
+                                          {{ getBuyingOrderStatusInfo(order.status).label }}
+                                      </span>
+                                  </td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
                               </tr>
                           </tbody>
@@ -991,7 +1000,11 @@ const confirmEmail = async () => {
                                   <td>{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td>
-                                  <td><span class="badge bg-secondary">{{ order.status_label }}</span></td>
+                                  <td>
+                                      <span class="badge" :class="[getSellingOrderStatusInfo(order.status).class, getSellingOrderStatusInfo(order.status).text]">
+                                          {{ getSellingOrderStatusInfo(order.status).label }}
+                                      </span>
+                                  </td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
                               </tr>
                           </tbody>
@@ -1025,7 +1038,7 @@ const confirmEmail = async () => {
               <form v-else>
                 <div class="mb-3">
                   <label class="form-label">姓名</label>
-                  <input type="text" class="form-control" :value="userInfo.name" disabled>
+                  <input type="text" class="form-control" :value="userInfo.full_name" disabled>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">手機號碼</label>
@@ -1055,7 +1068,7 @@ const confirmEmail = async () => {
                 <div class="mb-3">
                   <label class="form-label">KYC 身分</label>
                   <div class="input-group">
-                    <input type="text" class="form-control" :value="userInfo.kyc_level === 2 ? '已驗證' : '未驗證'" disabled>
+                    <input type="text" class="form-control" :class="userInfo.kyc_level === 2 ? 'text-success fw-bold' : 'text-secondary fw-bold'" :value="userInfo.kyc_level === 2 ? '實名驗證' : '基本驗證'" disabled>
                     <button v-if="userInfo.kyc_level !== 2" class="btn btn-outline-primary" type="button" @click="sendKYCInitiate">
                       身分驗證
                     </button>

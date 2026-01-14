@@ -52,7 +52,7 @@ const fetchStoreDetails = async () => {
     if (!storeId) return
 
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/stores/${storeId}`)
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/stores/${storeId}`)
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
@@ -194,7 +194,7 @@ const createSellingDraft = async () => {
             price: twdAmount.value
         }
 
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling/draft`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling/draft`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -252,7 +252,7 @@ const confirmSellingOrder = async () => {
             verification_code: smsVerificationCode.value
         }
 
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/selling/confirm`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling/confirm`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -289,7 +289,7 @@ const createBuyingOrder = async () => {
             price: twdAmount.value
         }
 
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/orders/buying`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/buying`, {
             method: 'POST',
             body: JSON.stringify(payload)
         })

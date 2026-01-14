@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { handleApiError } from '../utils/apiError'
 import { useToast } from '../composables/useToast'
+import { apiFetch } from '../utils/api'
 
 const router = useRouter()
 const toast = useToast()
@@ -27,7 +28,7 @@ const handleSubmit = async () => {
   }
 
   try {
-    const response = await fetch('https://dealer-agent.nygamedepot.com/api/v1/kyc/info', {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/kyc/info`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -46,7 +46,7 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/phone`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/phone`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -77,11 +77,11 @@ const handlePhoneSubmit = async () => {
 
 const handleResendCode = async () => {
     if (countdown.value > 0) return
-    
+    otpCode.value = ''
     isLoading.value = true
     errorMessage.value = ''
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/resend-verification`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -119,7 +119,7 @@ const handleOtpSubmit = async () => {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/verify`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/verify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -163,7 +163,7 @@ const handlePasswordSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/v1/register/password`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/password`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ const handlePasswordSubmit = async () => {
 
               <div class="d-grid gap-3">
                 <button type="submit" class="btn btn-success btn-lg fw-bold">驗證 & 繼續</button>
-                <button type="button" class="btn btn-link text-decoration-none text-muted" @click="step = 1">
+                <button type="button" class="btn btn-link text-decoration-none text-muted" @click="step = 1;otpCode = ''">
                   更改手機號碼
                 </button>
               </div>
