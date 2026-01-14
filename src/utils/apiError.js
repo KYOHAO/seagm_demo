@@ -25,7 +25,8 @@ export const ERROR_CODES = {
 }
 
 export const getErrorMessage = (code, defaultMsg = '未知的錯誤發生') => {
-    return ERROR_CODES[code] || defaultMsg
+    // return ERROR_CODES[code] || defaultMsg
+    return `${defaultMsg} [${code}]`;
 }
 
 export const handleApiError = (data) => {

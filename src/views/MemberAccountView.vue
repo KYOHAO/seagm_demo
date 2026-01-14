@@ -79,6 +79,9 @@ const sellingPagination = ref({
     last_page: 1
 })
 const isHistoryLoading = ref(false)
+const selectedOrder = ref(null)
+const orderDetailsModalInstance = ref(null)
+const isOrderDetailsLoading = ref(false)
 
 onMounted(() => {
     fetchUserInfo()
@@ -170,7 +173,66 @@ const fetchSellingOrders = async (page = 1) => {
     } finally {
         isHistoryLoading.value = false
     }
+
 }
+
+const openOrderDetailsModal = async (orderId) => {
+    isOrderDetailsLoading.value = true
+    selectedOrder.value = null 
+    
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/buying/${orderId}`)
+        const data = await response.json()
+        
+        if (response.ok && data.code === 0) {
+            selectedOrder.value = data.data.order
+            
+            const modalEl = document.getElementById('orderDetailsModal')
+            if (modalEl) {
+                orderDetailsModalInstance.value = new Modal(modalEl)
+                orderDetailsModalInstance.value.show()
+            }
+        } else {
+             const errorMsg = handleApiError(data)
+             toast.error(errorMsg || '取得訂單詳細失敗')
+        }
+    } catch (error) {
+        console.error('Fetch Order Details Error:', error)
+        toast.error('發生錯誤，請稍後再試')
+    } finally {
+        isOrderDetailsLoading.value = false
+    }
+}
+
+const openSellingOrderDetailsModal = async (orderId) => {
+    isOrderDetailsLoading.value = true
+    selectedOrder.value = null 
+    
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling/${orderId}`)
+        const data = await response.json()
+        
+        if (response.ok && data.code === 0) {
+            selectedOrder.value = data.data.order
+            
+            const modalEl = document.getElementById('sellingOrderDetailsModal')
+            if (modalEl) {
+                orderDetailsModalInstance.value = new Modal(modalEl)
+                orderDetailsModalInstance.value.show()
+            }
+        } else {
+             const errorMsg = handleApiError(data)
+             toast.error(errorMsg || '取得訂單詳細失敗')
+        }
+    } catch (error) {
+        console.error('Fetch Order Details Error:', error)
+        toast.error('發生錯誤，請稍後再試')
+    } finally {
+        isOrderDetailsLoading.value = false
+    }
+}
+
+const kycFormPromptModalInstance = ref(null)
 
 const showKycPrompt = () => {
     setTimeout(() => {
@@ -180,6 +242,23 @@ const showKycPrompt = () => {
             kycPromptModalInstance.value.show()
         }
     }, 500)
+}
+
+const showKycFormPrompt = () => {
+    setTimeout(() => {
+        const modalEl = document.getElementById('kycFormPromptModal')
+        if (modalEl) {
+            kycFormPromptModalInstance.value = new Modal(modalEl)
+            kycFormPromptModalInstance.value.show()
+        }
+    }, 500)
+}
+
+const confirmKycFormPrompt = () => {
+    if (kycFormPromptModalInstance.value) {
+        kycFormPromptModalInstance.value.hide()
+    }
+     router.push('/kyc-info')
 }
 
 const isUserInfoLoading = ref(false)
@@ -203,10 +282,10 @@ const fetchUserInfo = async () => {
             console.log(userData);
             // Auto Prompt for KYC if level is 1
             if (userInfo.value.kyc_level === 1) {
-                if (userInfo.value.face_pass === false) {
+                if (userInfo.value.kyc_step === 0) {
                     showKycPrompt()
-                }else{
-                    toast.info('跳轉至身分驗證表單')
+                } else if (userInfo.value.kyc_step === 1) {
+                    showKycFormPrompt()
                 }
             }
 
@@ -226,6 +305,7 @@ const fetchUserInfo = async () => {
     }
 }
 
+
 const bankAccounts = ref([])
 const isBankLoading = ref(false)
 const isDeletingBank = ref(false)
@@ -235,7 +315,7 @@ const deleteBankAccount = async () => {
 
     isDeletingBank.value = true
     try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account`, {
             method: 'DELETE'
         })
         const data = await response.json()
@@ -459,24 +539,19 @@ const handleAddBankSubmit = async () => {
     const token = localStorage.getItem('authToken')
     
     try {
-        const myHeaders = new Headers();
-        myHeaders.append("Accept", "application/json");
-        myHeaders.append("Authorization", "Bearer " + token);
-
         const formdata = new FormData();
         formdata.append("bank_code", bank_code);
         formdata.append("branch_code", branch_code);
         formdata.append("account_number", account_number);
         formdata.append("cover_photo", cover_photo);
 
-        const requestOptions = {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, {
             method: "POST",
-            headers: myHeaders,
-            body: formdata,
-            redirect: "follow"
-        };
-
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bank-account/bind`, requestOptions)
+            headers: {
+                "Accept": "application/json"
+            },
+            body: formdata
+        })
 
         const data = await response.json()
         
@@ -731,10 +806,10 @@ const goToKycInfo = () => {
 }
 
 const openEmailModal = () => {
-  if(userInfo.value.kyc_level !== 2) {
-      toast.warning('請先完成身分驗證')
-      return
-  }
+  // if(userInfo.value.kyc_level !== 2) {
+  //     toast.warning('請先完成身分驗證')
+  //     return
+  // }
   
   emailStep.value = 1
   emailForm.value = { email: '', code: '' }
@@ -933,7 +1008,7 @@ const confirmEmail = async () => {
                   <div v-else class="table-responsive">
                       <table class="table table-hover align-middle small">
                           <thead class="table-light">
-                              <tr>
+                              <tr class="text-center">
                                   <th>訂單 ID</th>
                                   <th>商戶</th>
                                   <th>數量</th>
@@ -941,24 +1016,31 @@ const confirmEmail = async () => {
                                   <th>付款方式</th>
                                   <th>狀態</th>
                                   <th>時間</th>
+                                  <th>操作</th>
                               </tr>
                           </thead>
                           <tbody>
                               <tr v-for="order in buyingOrders" :key="order.id">
                                   <td>{{ order.id }}</td>
-                                  <td>{{ getStoreName(order.store_id) }}</td>
+                                  <td class="text-center">{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td> 
-                                  <td>
+                                  <td class="text-center">
                                       {{ order.payments_label }}
                                       <span v-if="order.payments_sub" class="badge bg-light text-dark">{{ order.payments_sub }}</span>
                                   </td>
-                                  <td>
-                                      <span class="badge" :class="[getBuyingOrderStatusInfo(order.status).class, getBuyingOrderStatusInfo(order.status).text]">
+                                  <td class="text-center">
+                                      <span class="badge fs-6" :class="[getBuyingOrderStatusInfo(order.status).class, getBuyingOrderStatusInfo(order.status).text]">
                                           {{ getBuyingOrderStatusInfo(order.status).label }}
                                       </span>
                                   </td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+                                  <td class="text-center">
+                                      <button class="btn btn-sm btn-outline-primary" @click="openOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
+                                          <span v-if="isOrderDetailsLoading && selectedOrder?.id === order.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                          <span v-else>查看</span>
+                                      </button>
+                                  </td>
                               </tr>
                           </tbody>
                       </table>
@@ -992,20 +1074,27 @@ const confirmEmail = async () => {
                                   <th>總價</th>
                                   <th>狀態</th>
                                   <th>時間</th>
+                                  <th>操作</th>
                               </tr>
                           </thead>
                           <tbody>
                               <tr v-for="order in sellingOrders" :key="order.id">
                                   <td>{{ order.id }}</td>
-                                  <td>{{ getStoreName(order.store_id) }}</td>
+                                  <td class="text-center">{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td>
-                                  <td>
-                                      <span class="badge" :class="[getSellingOrderStatusInfo(order.status).class, getSellingOrderStatusInfo(order.status).text]">
+                                  <td class="text-center">
+                                      <span class="badge fs-6" :class="[getSellingOrderStatusInfo(order.status).class, getSellingOrderStatusInfo(order.status).text]">
                                           {{ getSellingOrderStatusInfo(order.status).label }}
                                       </span>
                                   </td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+                                  <td class="text-center">
+                                      <button class="btn btn-sm btn-outline-primary" @click="openSellingOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
+                                          <span v-if="isOrderDetailsLoading && selectedOrder?.id === order.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                          <span v-else>查看</span>
+                                      </button>
+                                  </td>
                               </tr>
                           </tbody>
                       </table>
@@ -1057,10 +1146,10 @@ const confirmEmail = async () => {
                   <label class="form-label">信箱</label>
                   <div class="input-group">
                     <input type="email" class="form-control" :value="userInfo.email" disabled placeholder="尚未驗證">
-                    <button v-if="userInfo.kyc_level !== 2" class="btn btn-outline-primary" type="button" disabled>
+                    <!--<button v-if="userInfo.kyc_level !== 2" class="btn btn-outline-primary" type="button" disabled>
                       請先完成身分驗證
-                    </button>
-                    <button v-else-if="!userInfo.email" class="btn btn-outline-primary" type="button" @click="openEmailModal">
+                    </button>-->
+                    <button v-if="!userInfo.email" class="btn btn-outline-primary" type="button" @click="openEmailModal">
                       驗證信箱
                     </button>
                   </div>
@@ -1069,9 +1158,19 @@ const confirmEmail = async () => {
                   <label class="form-label">KYC 身分</label>
                   <div class="input-group">
                     <input type="text" class="form-control" :class="userInfo.kyc_level === 2 ? 'text-success fw-bold' : 'text-secondary fw-bold'" :value="userInfo.kyc_level === 2 ? '實名驗證' : '基本驗證'" disabled>
-                    <button v-if="userInfo.kyc_level !== 2" class="btn btn-outline-primary" type="button" @click="sendKYCInitiate">
-                      身分驗證
-                    </button>
+                    
+                    <template v-if="userInfo.kyc_level === 1">
+                        <button v-if="userInfo.kyc_step === 0" class="btn btn-outline-primary" type="button" @click="showKycPrompt">
+                          身分驗證
+                        </button>
+                        <button v-else-if="userInfo.kyc_step === 1" class="btn btn-outline-primary" type="button" @click="showKycFormPrompt">
+                          表單驗證
+                        </button>
+                         <button v-else-if="userInfo.kyc_step === 2" class="btn btn-outline-secondary" type="button" disabled>
+                          等待審核
+                        </button>
+                    </template>
+
                   </div>
                 </div>
               </form>
@@ -1358,6 +1457,28 @@ const confirmEmail = async () => {
       </div>
     </div>
 
+    <!-- KYC Form Prompt Modal (Confirm/Cancel) -->
+    <div class="modal fade" id="kycFormPromptModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">表單驗證提醒</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center py-4">
+            <i class="bi bi-file-earmark-text text-info display-1 mb-3"></i>
+            <p class="mb-4 text-muted fs-5">
+              您已完成初步驗證，請繼續填寫身分驗證表單。<br>
+            </p>
+            <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+              <button class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">稍後再說</button>
+              <button class="btn btn-primary px-4" @click="confirmKycFormPrompt">前往填寫</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Add Game Account Modal -->
     <div class="modal fade" id="addGameModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -1400,6 +1521,255 @@ const confirmEmail = async () => {
                   </button>
                 </div>
              </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">訂單詳細內容</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-4" v-if="selectedOrder">
+              <ul class="list-group list-group-flush small">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">訂單 ID (ID)</span>
+                      <span class="fw-bold">{{ selectedOrder.id }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">遊戲商戶 (Store)</span>
+                      <span>{{ getStoreName(selectedOrder.store_id) }}</span>
+                  </li>
+                  <!--<li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">點數類型 ID (Point ID)</span>
+                      <span>{{ selectedOrder.point_id }}</span>
+                  </li>-->
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">數量 (Quantity)</span>
+                      <span>{{ formatNumber(selectedOrder.quantity) }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">單價 (Unit Price)</span>
+                      <span>{{ formatNumber(selectedOrder.unit_price) }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">總價 (Total Price)</span>
+                      <span class="fw-bold text-primary">{{ formatNumber(selectedOrder.total_price) }}</span>
+                  </li>
+                  
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">付款方式 (Payment)</span>
+                      <span>
+                          {{ selectedOrder.payments_label }}
+                          <span v-if="selectedOrder.payments_sub" class="badge bg-light text-dark ms-1">{{ selectedOrder.payments_sub }}</span>
+                          <span class="text-muted ms-1">({{ selectedOrder.payments }})</span>
+                      </span>
+                  </li>
+
+                  <!-- Payer Info -->
+                   <li v-if="selectedOrder.payer_bank_code" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">付款人銀行 (Payer Bank)</span>
+                      <span>{{ selectedOrder.payer_bank_code }}</span>
+                  </li>
+                  <li v-if="selectedOrder.payer_card_no" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">付款人帳號 (Payer Account)</span>
+                      <span>{{ selectedOrder.payer_card_no }}</span>
+                  </li>
+
+                  <!-- Payee Info -->
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">收款人銀行 (Payee Bank)</span>
+                      <span>{{ selectedOrder.payee_bank_code }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">收款人帳號 (Payee Account)</span>
+                      <span>{{ selectedOrder.payee_card_no }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">收款遊戲帳號 (Game Account)</span>
+                      <span>{{ selectedOrder.payee_game_account }}</span>
+                  </li>
+
+                  <!-- Refund Info -->
+                  <li v-if="selectedOrder.refund_bank_code" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">退款銀行 (Refund Bank)</span>
+                      <span>{{ selectedOrder.refund_bank_code }}</span>
+                  </li>
+                  <li v-if="selectedOrder.refund_card_no" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">退款帳號 (Refund Account)</span>
+                      <span>{{ selectedOrder.refund_card_no }}</span>
+                  </li>
+
+                  <!-- Flags -->
+                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">已通知 (Notified)</span>
+                      <span :class="selectedOrder.is_notified ? 'text-success' : 'text-danger'">
+                          <i class="bi" :class="selectedOrder.is_notified ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                      </span>
+                  </li>
+                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">已圈存 (Earmarked)</span>
+                      <span :class="selectedOrder.is_earmarked ? 'text-success' : 'text-danger'">
+                          <i class="bi" :class="selectedOrder.is_earmarked ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                      </span>
+                  </li>
+
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">訂單狀態 (Status)</span>
+                      <span class="badge" :class="[getBuyingOrderStatusInfo(selectedOrder.status).class, getBuyingOrderStatusInfo(selectedOrder.status).text]">
+                          {{ getBuyingOrderStatusInfo(selectedOrder.status).label }}
+                      </span>
+                  </li>
+
+                  <!-- Timestamps -->
+                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">建立時間 (Created)</span>
+                      <span>{{ new Date(selectedOrder.created_at).toLocaleString() }}</span>
+                  </li>
+                  <li v-if="selectedOrder.paid_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">付款時間 (Paid)</span>
+                      <span>{{ new Date(selectedOrder.paid_at).toLocaleString() }}</span>
+                  </li>
+                   <li v-if="selectedOrder.transfered_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">轉點時間 (Transferred)</span>
+                      <span>{{ new Date(selectedOrder.transfered_at).toLocaleString() }}</span>
+                  </li>
+                   <li v-if="selectedOrder.last_notified_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">最後通知時間 (Last Notified)</span>
+                      <span>{{ new Date(selectedOrder.last_notified_at).toLocaleString() }}</span>
+                  </li>
+                   <li v-if="selectedOrder.refunded_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">退款時間 (Refunded)</span>
+                      <span>{{ new Date(selectedOrder.refunded_at).toLocaleString() }}</span>
+                  </li>
+              </ul>
+
+              
+              <!-- Extra details if available -->
+               <div v-if="selectedOrder.content" class="mt-4">
+                  <h6 class="fw-bold border-bottom pb-2 mb-3">其他資訊</h6>
+                  <div class="bg-light p-3 rounded">
+                      <pre class="mb-0" style="white-space: pre-wrap;">{{ selectedOrder.content }}</pre>
+                  </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selling Order Details Modal -->
+    <div class="modal fade" id="sellingOrderDetailsModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title fw-bold">銷售訂單詳細內容</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body py-4" v-if="selectedOrder">
+              <ul class="list-group list-group-flush small">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">訂單 ID (ID)</span>
+                      <span class="fw-bold">{{ selectedOrder.id }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">遊戲商戶 (Store)</span>
+                      <span>{{ getStoreName(selectedOrder.store_id) }}</span>
+                  </li>
+                  <!--<li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">點數類型 ID (Point ID)</span>
+                      <span>{{ selectedOrder.point_id }}</span>
+                  </li>-->
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">數量 (Quantity)</span>
+                      <span>{{ formatNumber(selectedOrder.quantity) }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">已交付 (Delivered)</span>
+                      <span>{{ formatNumber(selectedOrder.delivered_quantity) }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">單價 (Unit Price)</span>
+                      <span>{{ formatNumber(selectedOrder.unit_price) }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">總價 (Total Price)</span>
+                      <span class="fw-bold text-primary">{{ formatNumber(selectedOrder.total_price) }}</span>
+                  </li>
+                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">手續費 (Fee)</span>
+                      <span class="text-danger">{{ formatNumber(selectedOrder.fee) }}</span>
+                  </li>
+                  
+                  <!-- Accounts Info -->
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">付款遊戲帳號 (Payer Game Account)</span>
+                      <span>{{ selectedOrder.payer_game_account }}</span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">收款遊戲帳號 (Payee Game Account)</span>
+                      <span>{{ selectedOrder.payee_game_account }}</span>
+                  </li>
+
+                   <!-- Bank Info -->
+                  <li v-if="selectedOrder.bank_code" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">銀行代碼 (Bank Code)</span>
+                      <span>{{ selectedOrder.bank_code }}</span>
+                  </li>
+                   <li v-if="selectedOrder.branch_code" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">分行代碼 (Branch Code)</span>
+                      <span>{{ selectedOrder.branch_code }}</span>
+                  </li>
+                   <li v-if="selectedOrder.account_number" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">銀行帳號 (Account Number)</span>
+                      <span>{{ selectedOrder.account_number }}</span>
+                  </li>
+                   <li v-if="selectedOrder.account_name" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">帳戶名稱 (Account Name)</span>
+                      <span>{{ selectedOrder.account_name }}</span>
+                  </li>
+
+
+                  <!-- Flags -->
+                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">已通知 (Notified)</span>
+                      <span :class="selectedOrder.is_notified ? 'text-success' : 'text-danger'">
+                          <i class="bi" :class="selectedOrder.is_notified ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
+                      </span>
+                  </li>
+
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">訂單狀態 (Status)</span>
+                      <span class="badge" :class="[getSellingOrderStatusInfo(selectedOrder.status).class, getSellingOrderStatusInfo(selectedOrder.status).text]">
+                          {{ getSellingOrderStatusInfo(selectedOrder.status).label }}
+                      </span>
+                  </li>
+
+                  <!-- Timestamps -->
+                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">建立時間 (Created)</span>
+                      <span>{{ new Date(selectedOrder.created_at).toLocaleString() }}</span>
+                  </li>
+                   <li v-if="selectedOrder.updated_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">更新時間 (Updated)</span>
+                      <span>{{ new Date(selectedOrder.updated_at).toLocaleString() }}</span>
+                  </li>
+                  <li v-if="selectedOrder.paid_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">出款時間 (Paid)</span>
+                      <span>{{ new Date(selectedOrder.paid_at).toLocaleString() }}</span>
+                  </li>
+                   <li v-if="selectedOrder.transfered_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">轉點時間 (Transferred)</span>
+                      <span>{{ new Date(selectedOrder.transfered_at).toLocaleString() }}</span>
+                  </li>
+                   <li v-if="selectedOrder.last_notified_at" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">最後通知時間 (Last Notified)</span>
+                      <span>{{ new Date(selectedOrder.last_notified_at).toLocaleString() }}</span>
+                  </li>
+              </ul>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { handleApiError } from '../utils/apiError'
 import { useToast } from '../composables/useToast'
+import { apiFetch } from '../utils/api'
 
 const router = useRouter()
 const toast = useToast()
@@ -46,11 +47,8 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/phone`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/register/phone`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         phone_number: phoneNumber.value
       })
@@ -81,11 +79,8 @@ const handleResendCode = async () => {
     isLoading.value = true
     errorMessage.value = ''
     try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/register/resend-verification`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
                 phone_number: phoneNumber.value
             })
@@ -119,11 +114,8 @@ const handleOtpSubmit = async () => {
   errorMessage.value = ''
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/verify`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/register/verify`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         phone_number: phoneNumber.value,
         verification_code: otpCode.value
@@ -163,11 +155,8 @@ const handlePasswordSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/register/password`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/register/password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         phone_number: phoneNumber.value,
         password: password.value,

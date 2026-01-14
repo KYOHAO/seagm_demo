@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
 import { handleApiError } from '../utils/apiError'
+import { apiFetch } from '../utils/api'
 
 const router = useRouter()
 const toast = useToast()
@@ -30,11 +31,8 @@ const handlePhoneSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/forgot-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         phone_number: phoneNumber.value
       })
@@ -74,11 +72,8 @@ const handleResetSubmit = async () => {
 
   isLoading.value = true
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         phone_number: phoneNumber.value,
         verification_code: verificationCode.value,

@@ -28,12 +28,8 @@ const handleSubmit = async () => {
   }
 
   try {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/kyc/info`, {
+    const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/kyc/info`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
       body: JSON.stringify(formData.value)
     })
 
