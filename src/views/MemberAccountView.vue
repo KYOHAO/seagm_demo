@@ -321,7 +321,7 @@ const fetchUserInfo = async () => {
             const userData = data.data.user
             userInfo.value = userData
             setCookie('userInfo', userData)
-            console.log(userData);
+            //console.log(userData);
             // Auto Prompt for KYC if level is 1
             if (userInfo.value.kyc_level === 1) {
                 if (userInfo.value.kyc_step === 0) {
@@ -425,11 +425,14 @@ const fetchGameAccounts = async () => {
 }
 
 const openAddGameModal = () => {
-    if(userInfo.value.kyc_level !== 2) {
-        toast.warning('請先完成身分驗證')
-        showKycPrompt()
-        return
-    }
+    // Auto Prompt for KYC if level is 1
+    if (userInfo.value.kyc_level === 1) {
+        if (userInfo.value.kyc_step === 0) {
+            showKycPrompt()
+        } else if (userInfo.value.kyc_step === 1) {
+            showKycFormPrompt()
+        }
+    } 
 
     gameStep.value = 1
     addGameForm.value = { store_id: '', account_name: '', verification_code: '' }
@@ -518,10 +521,13 @@ const handleGameVerifySubmit = async () => {
 }
 
 const openAddBankModal = () => {
-    if(userInfo.value.kyc_level !== 2) {
-        toast.warning('請先完成身分驗證')
-        showKycPrompt()
-        return
+    // Auto Prompt for KYC if level is 1
+    if (userInfo.value.kyc_level === 1) {
+        if (userInfo.value.kyc_step === 0) {
+            showKycPrompt()
+        } else if (userInfo.value.kyc_step === 1) {
+            showKycFormPrompt()
+        }
     }
 
     bankStep.value = 1
