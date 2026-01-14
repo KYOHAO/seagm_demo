@@ -31,7 +31,8 @@ export const getErrorMessage = (code, defaultMsg = '未知的錯誤發生') => {
 
 export const handleApiError = (data) => {
     if (data && data.code !== 0) {
-        return getErrorMessage(data.code, data.msg)
+        //return getErrorMessage(data.code, data.msg)
+        return getErrorMessage(data.code, Object.values(data.error)[0][0])
     }
     return null
 }

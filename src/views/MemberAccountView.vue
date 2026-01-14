@@ -117,6 +117,9 @@ watch(activeMenu, (newVal) => {
         } else {
             fetchSellingOrders()
         }
+    } else if (newVal === 'orders') {
+        fetchGameStores()
+        fetchActiveOrders()
     } else if (newVal === 'settings') {
         //fetchUserInfo()
     }
@@ -137,6 +140,45 @@ const getStoreName = (storeId) => {
     return store ? store.name : storeId
 }
 
+const activeOrdersTab = ref('buying')
+const activeBuyingOrders = ref([])
+const activeSellingOrders = ref([])
+const isActiveOrdersLoading = ref(false)
+
+const fetchActiveOrders = async () => {
+    isActiveOrdersLoading.value = true
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/active-orders`)
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            // Assuming data structure: { buying: [], selling: [] } or similar
+            // If the user says "API buy or sell is together", it might be a flat list with type?
+            // Or maybe it returns { buying_orders: [...], selling_orders: [...] }
+            // Since I cannot verify, I will optimistically check for both formats or try to parse
+            
+            // NOTE: Based on typical patterns if "together", it might be `orders` array.
+            // If it returns an object with keys:
+            if (data.data.buying_orders) {
+                activeBuyingOrders.value = data.data.buying_orders
+            } else {
+                 activeBuyingOrders.value = []
+            }
+
+            if (data.data.selling_orders) {
+                activeSellingOrders.value = data.data.selling_orders
+            } else {
+                activeSellingOrders.value = []
+            }
+            
+        } else {
+            console.error('Fetch Active Orders Failed:', data)
+        }
+    } catch (error) {
+         console.error('Fetch Active Orders Error:', error)
+    } finally {
+        isActiveOrdersLoading.value = false
+    }
+}
 
 
 const fetchBuyingOrders = async (page = 1) => {
@@ -981,8 +1023,108 @@ const confirmEmail = async () => {
 
             <!-- Content Area -->
             <div v-if="activeMenu === 'orders'">
-              <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i> 目前沒有進行中的訂單。
+               <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                  <a class="nav-link" :class="{ active: activeOrdersTab === 'buying' }" href="#" @click.prevent="activeOrdersTab = 'buying'">購買進行中</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" :class="{ active: activeOrdersTab === 'selling' }" href="#" @click.prevent="activeOrdersTab = 'selling'">銷售進行中</a>
+                </li>
+              </ul>
+
+              <div v-if="isActiveOrdersLoading" class="text-center py-5">
+                  <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                  </div>
+              </div>
+
+              <!-- Active Buying Orders -->
+              <div v-else-if="activeOrdersTab === 'buying'">
+                   <div v-if="activeBuyingOrders.length === 0" class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i> 目前沒有進行中的購買訂單。
+                  </div>
+                  <div v-else class="table-responsive">
+                       <table class="table table-hover align-middle small">
+                          <thead class="table-light">
+                              <tr class="text-center">
+                                  <th>訂單 ID</th>
+                                  <th>商戶</th>
+                                  <th>數量</th>
+                                  <th>總價</th>
+                                  <th>付款方式</th>
+                                  <th>狀態</th>
+                                  <th>時間</th>
+                                  <th>操作</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr v-for="order in activeBuyingOrders" :key="order.id">
+                                  <td>{{ order.id }}</td>
+                                  <td class="text-center">{{ getStoreName(order.store_id) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.quantity) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.total_price) }}</td> 
+                                  <td class="text-center">
+                                      {{ order.payments_label }}
+                                      <span v-if="order.payments_sub" class="badge bg-light text-dark">{{ order.payments_sub }}</span>
+                                  </td>
+                                  <td class="text-center">
+                                      <span class="badge fs-6" :class="[getBuyingOrderStatusInfo(order.status).class, getBuyingOrderStatusInfo(order.status).text]">
+                                          {{ getBuyingOrderStatusInfo(order.status).label }}
+                                      </span>
+                                  </td>
+                                  <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+                                  <td class="text-center">
+                                      <button class="btn btn-sm btn-outline-primary" @click="openOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
+                                          <span v-if="isOrderDetailsLoading && selectedOrder?.id === order.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                          <span v-else>查看</span>
+                                      </button>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+
+               <!-- Active Selling Orders -->
+              <div v-else-if="activeOrdersTab === 'selling'">
+                   <div v-if="activeSellingOrders.length === 0" class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i> 目前沒有進行中的銷售訂單。
+                  </div>
+                  <div v-else class="table-responsive">
+                       <table class="table table-hover align-middle small">
+                          <thead class="table-light">
+                              <tr class="text-center">
+                                  <th>訂單 ID</th>
+                                  <th>商戶</th>
+                                  <th>數量</th>
+                                  <th>總價</th>
+                                  <th>狀態</th>
+                                  <th>時間</th>
+                                  <th>操作</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              <tr v-for="order in activeSellingOrders" :key="order.id">
+                                  <td>{{ order.id }}</td>
+                                  <td class="text-center">{{ getStoreName(order.store_id) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.quantity) }}</td>
+                                  <td class="text-end">{{ formatNumber(order.total_price) }}</td>
+                                  <td class="text-center">
+                                      <span class="badge fs-6" :class="[getSellingOrderStatusInfo(order.status).class, getSellingOrderStatusInfo(order.status).text]">
+                                          {{ getSellingOrderStatusInfo(order.status).label }}
+                                      </span>
+                                  </td>
+                                  <td>{{ new Date(order.created_at).toLocaleString() }}</td>
+                                  <td class="text-center">
+                                      <button class="btn btn-sm btn-outline-primary" @click="openSellingOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
+                                          <span v-if="isOrderDetailsLoading && selectedOrder?.id === order.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                          <span v-else>查看</span>
+                                      </button>
+                                  </td>
+                              </tr>
+                          </tbody>
+                      </table>
+                  </div>
               </div>
             </div>
             <div v-else-if="activeMenu === 'history'">
