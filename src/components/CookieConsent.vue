@@ -21,14 +21,11 @@ const acceptCookies = () => {
     <div class="container d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
       <div class="cookie-text">
         <p class="mb-0 small">
-         我們尊重您的個資隱私
-我們使用 Cookie 保證您最佳的瀏覽體驗，Cookie 既適用於保存必要的基本資訊，也可以確保我們為您提供最合適的相關内容。若您同意接受所有的 Cookie，我們將可進一步提升您的網路體驗。請注意，部分為第三方 Cookie，您可以點擊下方按鈕，調整 Cookie 偏好設定。更多詳情，請參閱我們的 
-<a href="#" class="text-info text-decoration-none">Cookie 政策</a>。
-          
+         為提供會員最優質服務，本平台會於會員端電腦放置並取用Cookies；若不願接受 Cookies寫入 ，可在瀏覽器功能中將隱私權等級設定為高，但可能會導致本平台服務有部分功能無法正常執行，或是失去參與活動之權利。          
         </p>
       </div>
       <div class="cookie-actions d-flex gap-2">
-        <button @click="acceptCookies" class="btn btn-primary btn-sm px-4 fw-bold">接受</button>
+        <button @click="acceptCookies" class="btn btn-primary px-5 py-2 fw-bold text-nowrap">允許</button>
       </div>
     </div>
   </div>

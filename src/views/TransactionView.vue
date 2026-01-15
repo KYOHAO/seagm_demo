@@ -419,6 +419,9 @@ const goBack = () => {
                       <i class="bi bi-exclamation-circle me-1"></i>交易金額不可低於 1,000 TWD
                     </div>
                   </div>
+                  <div class="alert alert-danger text-center fw-bold mb-4">
+                      賣單完成後將收取3%搓和手續費
+                  </div>
               </template>
             </div>
 
@@ -435,6 +438,12 @@ const goBack = () => {
                   <span>請新增或確認遊戲帳號狀態</span>
                   <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=game')">前往查看</button>
               </div>
+              <div v-if="txType === 'buy'" class="mt-2 text-danger fw-bold small">
+                ※請務必確認遊戲帳號是否正確，帳號錯誤不予賠償。
+              </div>
+              <div v-else class="mt-2 text-danger fw-bold small">
+                ※請務必用綁定之遊戲帳號轉幣，用非綁定之帳號轉幣將會拒收。
+              </div>
             </div>
 
             <!-- 5. Bank Account -->
@@ -449,6 +458,10 @@ const goBack = () => {
               <div v-else class="alert alert-warning mb-0 d-flex justify-content-between align-items-center" role="alert">
                   <span>請新增或確認銀行帳號</span>
                   <button class="btn btn-sm btn-outline-dark" @click="router.push('/account?tab=bank')">前往查看</button>
+              </div>
+              <div v-if="txType === 'buy'" class="mt-2 text-danger fw-bold small">
+                  <div>※請務必用綁定之銀行帳號付款，用非綁定銀行帳號轉帳將會拒收。</div>
+                  <div>※轉帳時請勿做奇怪的備註。</div>
               </div>
             </div>
 
@@ -466,13 +479,13 @@ const goBack = () => {
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="term1" v-model="termsChecked1">
                 <label class="form-check-label" for="term1">
-                  我已閱讀並同意 <a href="#">服務條款</a>。
+                  我已閱讀並同意 <router-link to="/help?topic=user-terms" class="text-decoration-none text-secondary">服務條款</router-link>。
                 </label>
               </div>
               <div class="form-check mb-4">
                 <input class="form-check-input" type="checkbox" id="term2" v-model="termsChecked2">
                 <label class="form-check-label" for="term2">
-                  我確認交易細節正確。
+                  我已充分瞭解交易細節，轉幣完成後將不可取消訂單。
                 </label>
               </div>
 
@@ -505,11 +518,11 @@ const goBack = () => {
                     <div v-if="orderResult" class="table-responsive">
                       <table class="table table-bordered table-striped">
                         <tbody>
-                          <tr><th width="30%">商戶 ID (Store ID)</th><td>{{ orderResult.store_id }}</td></tr>
-                          <tr><th>點數類型 ID (Point ID)</th><td>{{ orderResult.point_id }}</td></tr>
-                          <tr><th>數量 (Quantity)</th><td>{{ orderResult.quantity }}</td></tr>
-                          <tr><th>單價 (Unit Price)</th><td>{{ orderResult.unit_price }}</td></tr>
-                          <tr><th>總價 (Total Price)</th><td>{{ formatNumber(orderResult.total_price) }}</td></tr>
+                          <tr><th width="30%">遊戲名稱</th><td>{{ gameName }}</td></tr>
+                          <!--<tr><th>點數類型 ID (Point ID)</th><td>{{ orderResult.point_id }}</td></tr>-->
+                          <tr><th>金幣數量</th><td>{{ orderResult.quantity }}</td></tr>
+                          <tr><th>比率</th><td>1 : {{ orderResult.unit_price }}</td></tr>
+                          <tr><th>總價</th><td>{{ formatNumber(orderResult.total_price) }}</td></tr>
                           <!--<tr><th>付款方式 (Payment)</th><td>{{ orderResult.payments_label }} ({{ orderResult.payments }})</td></tr>-->
                           <!--<tr><th>付款子類型 (Sub)</th><td>{{ orderResult.payments_sub || '-' }}</td></tr>-->
                           
@@ -518,16 +531,16 @@ const goBack = () => {
                           <tr><th>付款人帳號</th><td>{{ orderResult.payer_card_no || '-' }}</td></tr>-->
 
                           <!-- Payee Info -->
-                          <tr><th>收款人銀行代碼 (Payee Bank)</th><td>{{ orderResult.payee_bank_code }}</td></tr>
-                          <tr><th>收款人帳號 (Payee Account)</th><td>{{ orderResult.payee_card_no }}</td></tr>
-                          <tr><th>收款遊戲帳號 (Game Account)</th><td>{{ orderResult.payee_game_account }}</td></tr>
+                          <tr><th>收款銀行代碼</th><td>{{ orderResult.payee_bank_code }}</td></tr>
+                          <tr><th>收款帳號</th><td>{{ orderResult.payee_card_no }}</td></tr>
+                          <tr><th>會員遊戲帳號</th><td>{{ orderResult.payee_game_account }}</td></tr>
                           
-                          <tr><th>狀態 (Status)</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
-                          <tr><th>建立時間 (Created At)</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
+                          <tr><th>狀態</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
+                          <tr><th>建立時間</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
                         </tbody>
                       </table>
                       <div class="alert alert-warning mt-3">
-                          <i class="bi bi-info-circle me-2"></i>請盡快完成付款轉帳，以利訂單處理。
+                          <i class="bi bi-info-circle me-2"></i>此付款帳號僅供當日與當次使用，付款後才完成買單掛單，付款後不可取消訂單。
                       </div>
                     </div>
                   </div>
@@ -539,13 +552,23 @@ const goBack = () => {
             </div>
            </div>
           </div>
+
+          <!-- Card Footer with Warning -->
           <div class="card-footer bg-light text-muted small p-4">
             <h6 class="fw-bold text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>買賣警語</h6>
-            <p class="mb-0">
-              請注意潛在詐騙風險。請勿向任何人透露您的 OTP 或密碼。 
-              請確保您在官方 SEAGM 平台上交易。 
-              交易一旦完成即為最終決議。
-            </p>
+            <div v-if="txType === 'buy'">
+                 <p class="mb-0 text-danger">
+                  <div>※若您為限制行為能力者或無行為能力者請勿下單。</div>
+                  <div>※請勿將會員帳號借予他人使用。</div>
+                  <div>※買單通常2~12分鐘可以收到遊戲金幣。</div>
+                </p>
+            </div>
+            <div v-else>
+                 <p class="mb-1 text-danger">
+                  <div>※轉點後才完成掛單，掛賣單通常3~110分鐘可以收到款項；當日到款之最後下單時間為22:30，逾時下單若未能於23:15前配對完成，將會於翌日上午 09:00開始陸續出款。</div>
+                  <div>※為維持會員體驗，本平台有權以掛賣價格97%之金額強制收購會員訂單，強制收購之部位不收取搓和手續費。</div>
+                </p>
+            </div>
           </div>
         </div>
       </div>

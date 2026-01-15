@@ -47,8 +47,10 @@ const handleGameClick = (game) => {
                 {{ item.name }}
               </h6>
               <div class="d-inline-block text-start small fw-bold">
-                <div class="text-success">(買) NT$ 1 : {{ formatNumber(item.selling_rate) }}</div>
-                <div class="text-danger">(賣) NT$ 1 : {{ formatNumber(item.buying_rate) }}</div>
+                <!--<div class="text-success">(買) NT$ 1 : {{ formatNumber(item.selling_rate) }}</div>-->
+                <!--<div class="text-danger">(賣) NT$ 1 : {{ formatNumber(item.buying_rate) }}</div>-->
+                <div class="text-success">(買) {{ formatNumber(item.selling_rate) }} 金幣</div>
+                <div class="text-danger">(賣) {{ formatNumber(item.buying_rate) }} 金幣</div>
               </div>
             </div>
           </div>

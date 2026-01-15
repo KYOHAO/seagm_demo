@@ -39,9 +39,9 @@ const handleAction = (actionType) => {
 <template>
   <div>
     <HeroSection />
-    <GameGrid title="熱門遊戲" :items="games.slice(0, 6)" @game-click="openModal" />
-    <GameGrid title="新上市" :items="games.slice(0, 6).reverse()" @game-click="openModal" />
-    <GameGrid title="每周熱銷" :items="games.slice(0, 6)" @game-click="openModal" />
+    <!--<GameGrid title="熱門遊戲" :items="games.slice(0, 6)" @game-click="openModal" />-->
+    <GameGrid title="快速購買" :items="games.slice(0, 6).reverse()" @game-click="openModal" />
+    <!-- <GameGrid title="每周熱銷" :items="games.slice(0, 6)" @game-click="openModal" /> -->
 
     <!-- Action Modal -->
     <div class="modal fade" id="homeActionModal" tabindex="-1" aria-hidden="true">

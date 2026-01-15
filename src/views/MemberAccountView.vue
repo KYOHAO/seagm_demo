@@ -976,19 +976,20 @@ const confirmEmail = async () => {
           <button 
             type="button" 
             class="list-group-item list-group-item-action"
-            :class="{ active: activeMenu === 'bank_accounts' }"
-            @click="activeMenu = 'bank_accounts'"
-          >
-            <i class="bi bi-bank me-2"></i> 銀行帳號
-          </button>
-          <button 
-            type="button" 
-            class="list-group-item list-group-item-action"
             :class="{ active: activeMenu === 'game_accounts' }"
             @click="activeMenu = 'game_accounts'"
           >
             <i class="bi bi-controller me-2"></i> 遊戲帳號
           </button>
+          <button 
+            type="button" 
+            class="list-group-item list-group-item-action"
+            :class="{ active: activeMenu === 'bank_accounts' }"
+            @click="activeMenu = 'bank_accounts'"
+          >
+            <i class="bi bi-bank me-2"></i> 銀行帳號
+          </button>
+          
         </div>
       </div>
 
@@ -1029,14 +1030,17 @@ const confirmEmail = async () => {
 
             <!-- Content Area -->
             <div v-if="activeMenu === 'orders'">
-               <ul class="nav nav-tabs mb-3">
-                <li class="nav-item">
-                  <a class="nav-link" :class="{ active: activeOrdersTab === 'buying' }" href="#" @click.prevent="activeOrdersTab = 'buying'">購買進行中</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" :class="{ active: activeOrdersTab === 'selling' }" href="#" @click.prevent="activeOrdersTab = 'selling'">銷售進行中</a>
-                </li>
-              </ul>
+               <div class="d-flex align-items-center mb-3">
+                <ul class="nav nav-tabs mb-0">
+                  <li class="nav-item">
+                    <a class="nav-link" :class="{ active: activeOrdersTab === 'buying' }" href="#" @click.prevent="activeOrdersTab = 'buying'">購買訂單</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" :class="{ active: activeOrdersTab === 'selling' }" href="#" @click.prevent="activeOrdersTab = 'selling'">銷售訂單</a>
+                  </li>
+                </ul>
+                <span class="ms-3 text-danger small">※當日買或賣達新台幣50萬元，依規定將進行大額通貨通報。</span>
+              </div>
 
               <div v-if="isActiveOrdersLoading" class="text-center py-5">
                   <div class="spinner-border text-primary" role="status">
@@ -1054,8 +1058,8 @@ const confirmEmail = async () => {
                           <thead class="table-light">
                               <tr class="text-center">
                                   <th>訂單 ID</th>
-                                  <th>商戶</th>
-                                  <th>數量</th>
+                                  <th>遊戲</th>
+                                  <th>金幣數量</th>
                                   <th>總價</th>
                                   <th>付款方式</th>
                                   <th>狀態</th>
@@ -1101,8 +1105,8 @@ const confirmEmail = async () => {
                           <thead class="table-light">
                               <tr class="text-center">
                                   <th>訂單 ID</th>
-                                  <th>商戶</th>
-                                  <th>數量</th>
+                                  <th>遊戲</th>
+                                  <th>金幣數量</th>
                                   <th>總價</th>
                                   <th>狀態</th>
                                   <th>時間</th>
@@ -1135,14 +1139,17 @@ const confirmEmail = async () => {
             </div>
             <div v-else-if="activeMenu === 'history'">
               <!-- History Tabs -->
-              <ul class="nav nav-tabs mb-3">
-                <li class="nav-item">
-                  <a class="nav-link" :class="{ active: historyTab === 'buying' }" href="#" @click.prevent="historyTab = 'buying'">購買訂單</a>
-                </li>
-                <li class="nav-item">
-                  <a class="nav-link" :class="{ active: historyTab === 'selling' }" href="#" @click.prevent="historyTab = 'selling'">銷售訂單</a>
-                </li>
-              </ul>
+              <div class="d-flex align-items-center mb-3">
+                <ul class="nav nav-tabs mb-0">
+                  <li class="nav-item">
+                    <a class="nav-link" :class="{ active: historyTab === 'buying' }" href="#" @click.prevent="historyTab = 'buying'">購買訂單</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" :class="{ active: historyTab === 'selling' }" href="#" @click.prevent="historyTab = 'selling'">銷售訂單</a>
+                  </li>
+                </ul>
+                <span class="ms-3 text-danger small">※當日買或賣達新台幣50萬元，依規定將進行大額通貨通報。</span>
+              </div>
 
               <div v-if="isHistoryLoading" class="text-center py-5">
                   <div class="spinner-border text-primary" role="status">
@@ -1158,8 +1165,8 @@ const confirmEmail = async () => {
                           <thead class="table-light">
                               <tr class="text-center">
                                   <th>訂單 ID</th>
-                                  <th>商戶</th>
-                                  <th>數量</th>
+                                  <th>遊戲</th>
+                                  <th>金幣數量</th>
                                   <th>總價</th>
                                   <th>付款方式</th>
                                   <th>狀態</th>
@@ -1217,8 +1224,8 @@ const confirmEmail = async () => {
                           <thead class="table-light">
                               <tr class="text-center">
                                   <th>訂單 ID</th>
-                                  <th>商戶</th>
-                                  <th>數量</th>
+                                  <th>遊戲</th>
+                                  <th>金幣數量</th>
                                   <th>總價</th>
                                   <th>狀態</th>
                                   <th>時間</th>
@@ -1387,7 +1394,7 @@ const confirmEmail = async () => {
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th>商戶名稱</th>
+                                <th>遊戲名稱</th>
                                 <th>帳號名稱</th>
                                 <th>狀態</th>
                             </tr>
@@ -1538,6 +1545,7 @@ const confirmEmail = async () => {
                       </option>
                   </select>
                   <div v-if="isBankListLoading" class="form-text">取得銀行列表中...</div>
+                  <div class="form-text text-danger small">⭐僅限參加金融XML之金融機構(惟952農會有參加不支援)。</div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label">分行代碼 (Branch Code)</label>
@@ -1554,7 +1562,7 @@ const confirmEmail = async () => {
                   <input type="text" class="form-control" v-model="addBankForm.account_number" placeholder="最多14碼" maxlength="14" required>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label">存摺封面照片 (Cover Photo)</label>
+                  <label class="form-label">存摺封面照片 (Cover Photo) <span class="text-danger small ms-2">⚠️僅接受申請人本人銀行帳號</span></label>
                   <input type="file" class="form-control" @change="handleFileChange" accept="image/jpeg, image/png" required>
                   <div class="form-text">支援 JPEG, PNG 格式，最大 5MB</div>
                 </div>
@@ -1638,9 +1646,9 @@ const confirmEmail = async () => {
           <div class="modal-body py-4">
              <form v-if="gameStep === 1" @submit.prevent="handleAddGameSubmit">
                 <div class="mb-3">
-                  <label class="form-label">選擇遊戲商戶</label>
+                  <label class="form-label">選擇遊戲名稱</label>
                   <select class="form-select" v-model="addGameForm.store_id" required>
-                      <option value="" disabled>請選擇商戶</option>
+                      <option value="" disabled>請選擇遊戲名稱</option>
                       <option v-for="store in gameStores" :key="store.id" :value="store.id">
                           {{ store.name }}
                       </option>
@@ -1649,6 +1657,10 @@ const confirmEmail = async () => {
                 <div class="mb-3">
                   <label class="form-label">帳號名稱 (Account Name)</label>
                   <input type="text" class="form-control" v-model="addGameForm.account_name" placeholder="請輸入遊戲帳號名稱" maxlength="60" required>
+                </div>
+                <div class="mb-3">
+                  <p class="text-danger fw-bold mb-1 small">⚠️遊戲帳號需為申請人本人持有。</p>  
+                  <p class="text-danger fw-bold mb-0 small">⚠️請注意帳號是否正確，輸入錯誤之遊戲帳號導致損失，本平台不負任何責任。</p>
                 </div>
                 <div class="d-grid">
                   <button type="submit" class="btn btn-primary" :disabled="isAddGameLoading">
@@ -1685,11 +1697,11 @@ const confirmEmail = async () => {
           <div class="modal-body py-4" v-if="selectedOrder">
               <ul class="list-group list-group-flush small">
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">訂單 ID (ID)</span>
+                      <span class="text-muted">訂單 ID</span>
                       <span class="fw-bold">{{ selectedOrder.id }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">遊戲商戶 (Store)</span>
+                      <span class="text-muted">遊戲名稱</span>
                       <span>{{ getStoreName(selectedOrder.store_id) }}</span>
                   </li>
                   <!--<li class="list-group-item d-flex justify-content-between align-items-center">
@@ -1697,20 +1709,20 @@ const confirmEmail = async () => {
                       <span>{{ selectedOrder.point_id }}</span>
                   </li>-->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">數量 (Quantity)</span>
+                      <span class="text-muted">金幣數量</span>
                       <span>{{ formatNumber(selectedOrder.quantity) }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">單價 (Unit Price)</span>
-                      <span>{{ formatNumber(selectedOrder.unit_price) }}</span>
+                      <span class="text-muted">比率</span>
+                      <span>1 : {{ formatNumber(selectedOrder.unit_price) }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">總價 (Total Price)</span>
+                      <span class="text-muted">總價</span>
                       <span class="fw-bold text-primary">{{ formatNumber(selectedOrder.total_price) }}</span>
                   </li>
                   
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款方式 (Payment)</span>
+                      <span class="text-muted">付款方式</span>
                       <span>
                           {{ selectedOrder.payments_label }}
                           <span v-if="selectedOrder.payments_sub" class="badge bg-light text-dark ms-1">{{ selectedOrder.payments_sub }}</span>
@@ -1720,35 +1732,35 @@ const confirmEmail = async () => {
 
                   <!-- Payer Info -->
                    <li v-if="selectedOrder.payer_bank_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款人銀行 (Payer Bank)</span>
+                      <span class="text-muted">付款人銀行</span>
                       <span>{{ selectedOrder.payer_bank_code }}</span>
                   </li>
                   <li v-if="selectedOrder.payer_card_no" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款人帳號 (Payer Account)</span>
+                      <span class="text-muted">付款人帳號</span>
                       <span>{{ selectedOrder.payer_card_no }}</span>
                   </li>
 
                   <!-- Payee Info -->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款人銀行 (Payee Bank)</span>
+                      <span class="text-muted">收款銀行代碼</span>
                       <span>{{ selectedOrder.payee_bank_code }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款人帳號 (Payee Account)</span>
+                      <span class="text-muted">收款帳號</span>
                       <span>{{ selectedOrder.payee_card_no }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款遊戲帳號 (Game Account)</span>
+                      <span class="text-muted">會員遊戲帳號</span>
                       <span>{{ selectedOrder.payee_game_account }}</span>
                   </li>
 
                   <!-- Refund Info -->
                   <li v-if="selectedOrder.refund_bank_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">退款銀行 (Refund Bank)</span>
+                      <span class="text-muted">退款銀行</span>
                       <span>{{ selectedOrder.refund_bank_code }}</span>
                   </li>
                   <li v-if="selectedOrder.refund_card_no" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">退款帳號 (Refund Account)</span>
+                      <span class="text-muted">退款帳號</span>
                       <span>{{ selectedOrder.refund_card_no }}</span>
                   </li>
 
@@ -1775,23 +1787,23 @@ const confirmEmail = async () => {
 
                   <!-- Timestamps -->
                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">建立時間 (Created)</span>
+                      <span class="text-muted">建立時間</span>
                       <span>{{ new Date(selectedOrder.created_at).toLocaleString() }}</span>
                   </li>
                   <li v-if="selectedOrder.paid_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款時間 (Paid)</span>
+                      <span class="text-muted">付款時間</span>
                       <span>{{ new Date(selectedOrder.paid_at).toLocaleString() }}</span>
                   </li>
                    <li v-if="selectedOrder.transfered_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">轉點時間 (Transferred)</span>
+                      <span class="text-muted">轉點時間</span>
                       <span>{{ new Date(selectedOrder.transfered_at).toLocaleString() }}</span>
                   </li>
                    <li v-if="selectedOrder.last_notified_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">最後通知時間 (Last Notified)</span>
+                      <span class="text-muted">最後通知時間</span>
                       <span>{{ new Date(selectedOrder.last_notified_at).toLocaleString() }}</span>
                   </li>
                    <li v-if="selectedOrder.refunded_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">退款時間 (Refunded)</span>
+                      <span class="text-muted">退款時間</span>
                       <span>{{ new Date(selectedOrder.refunded_at).toLocaleString() }}</span>
                   </li>
               </ul>
@@ -1820,11 +1832,11 @@ const confirmEmail = async () => {
           <div class="modal-body py-4" v-if="selectedOrder">
               <ul class="list-group list-group-flush small">
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">訂單 ID (ID)</span>
+                      <span class="text-muted">訂單 ID</span>
                       <span class="fw-bold">{{ selectedOrder.id }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">遊戲商戶 (Store)</span>
+                      <span class="text-muted">遊戲名稱</span>
                       <span>{{ getStoreName(selectedOrder.store_id) }}</span>
                   </li>
                   <!--<li class="list-group-item d-flex justify-content-between align-items-center">
@@ -1832,65 +1844,65 @@ const confirmEmail = async () => {
                       <span>{{ selectedOrder.point_id }}</span>
                   </li>-->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">數量 (Quantity)</span>
+                      <span class="text-muted">金幣數量</span>
                       <span>{{ formatNumber(selectedOrder.quantity) }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">已交付 (Delivered)</span>
+                      <span class="text-muted">已交付</span>
                       <span>{{ formatNumber(selectedOrder.delivered_quantity) }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">單價 (Unit Price)</span>
-                      <span>{{ formatNumber(selectedOrder.unit_price) }}</span>
+                      <span class="text-muted">比率</span>
+                      <span>1 : {{ formatNumber(selectedOrder.unit_price) }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">總價 (Total Price)</span>
+                      <span class="text-muted">總價</span>
                       <span class="fw-bold text-primary">{{ formatNumber(selectedOrder.total_price) }}</span>
                   </li>
                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">手續費 (Fee)</span>
+                      <span class="text-muted">手續費</span>
                       <span class="text-danger">{{ formatNumber(selectedOrder.fee) }}</span>
                   </li>
                   
                   <!-- Accounts Info -->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款遊戲帳號 (Payer Game Account)</span>
+                      <span class="text-muted">會員遊戲帳號</span>
                       <span>{{ selectedOrder.payer_game_account }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款遊戲帳號 (Payee Game Account)</span>
+                      <span class="text-muted">收款遊戲帳號</span>
                       <span>{{ selectedOrder.payee_game_account }}</span>
                   </li>
 
                    <!-- Bank Info -->
                   <li v-if="selectedOrder.bank_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">銀行代碼 (Bank Code)</span>
+                      <span class="text-muted">銀行代碼</span>
                       <span>{{ selectedOrder.bank_code }}</span>
                   </li>
                    <li v-if="selectedOrder.branch_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">分行代碼 (Branch Code)</span>
+                      <span class="text-muted">分行代碼</span>
                       <span>{{ selectedOrder.branch_code }}</span>
                   </li>
                    <li v-if="selectedOrder.account_number" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">銀行帳號 (Account Number)</span>
+                      <span class="text-muted">銀行帳號</span>
                       <span>{{ selectedOrder.account_number }}</span>
                   </li>
                    <li v-if="selectedOrder.account_name" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">帳戶名稱 (Account Name)</span>
+                      <span class="text-muted">帳戶名稱</span>
                       <span>{{ selectedOrder.account_name }}</span>
                   </li>
 
 
                   <!-- Flags -->
                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">已通知 (Notified)</span>
+                      <span class="text-muted">已通知</span>
                       <span :class="selectedOrder.is_notified ? 'text-success' : 'text-danger'">
                           <i class="bi" :class="selectedOrder.is_notified ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
                       </span>
                   </li>
 
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">訂單狀態 (Status)</span>
+                      <span class="text-muted">訂單狀態</span>
                       <span class="badge" :class="[getSellingOrderStatusInfo(selectedOrder.status).class, getSellingOrderStatusInfo(selectedOrder.status).text]">
                           {{ getSellingOrderStatusInfo(selectedOrder.status).label }}
                       </span>
@@ -1898,23 +1910,23 @@ const confirmEmail = async () => {
 
                   <!-- Timestamps -->
                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">建立時間 (Created)</span>
+                      <span class="text-muted">建立時間</span>
                       <span>{{ new Date(selectedOrder.created_at).toLocaleString() }}</span>
                   </li>
                    <li v-if="selectedOrder.updated_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">更新時間 (Updated)</span>
+                      <span class="text-muted">更新時間</span>
                       <span>{{ new Date(selectedOrder.updated_at).toLocaleString() }}</span>
                   </li>
                   <li v-if="selectedOrder.paid_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">出款時間 (Paid)</span>
+                      <span class="text-muted">出款時間</span>
                       <span>{{ new Date(selectedOrder.paid_at).toLocaleString() }}</span>
                   </li>
                    <li v-if="selectedOrder.transfered_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">轉點時間 (Transferred)</span>
+                      <span class="text-muted">轉點時間</span>
                       <span>{{ new Date(selectedOrder.transfered_at).toLocaleString() }}</span>
                   </li>
                    <li v-if="selectedOrder.last_notified_at" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">最後通知時間 (Last Notified)</span>
+                      <span class="text-muted">最後通知時間</span>
                       <span>{{ new Date(selectedOrder.last_notified_at).toLocaleString() }}</span>
                   </li>
               </ul>

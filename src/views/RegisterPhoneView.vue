@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { handleApiError } from '../utils/apiError'
 import { useToast } from '../composables/useToast'
@@ -12,6 +12,15 @@ const otpCode = ref('')
 const step = ref(1) // 1: Phone Input, 2: OTP Input, 3: Password
 const isLoading = ref(false)
 const errorMessage = ref('')
+const isPlatformRulesChecked = ref(false)
+const isPrivacyPolicyChecked = ref(false)
+const isUserTermsChecked = ref(false)
+
+// Add computed property to check if all are agreed
+const isAgreed = computed(() => {
+    return isPlatformRulesChecked.value && isPrivacyPolicyChecked.value && isUserTermsChecked.value
+})
+
 const countdown = ref(0)
 let timer = null
 
@@ -192,6 +201,11 @@ const handlePasswordSubmit = async () => {
               {{ step === 1 ? '註冊 - 第一步' : (step === 2 ? '驗證手機' : '設定密碼') }}
             </h3>
 
+            <div v-if="step === 1" class="text-center mb-4">
+                <p class="text-danger fw-bold mb-1">⚠️未滿18歲請勿註冊</p>
+                <p class="text-danger fw-bold mb-0">⚠️限制行為能力者或無行為能力者請勿註冊</p>
+            </div>
+
             <!-- Step 1: Phone Number -->
             <form v-if="step === 1" @submit.prevent="handlePhoneSubmit">
               <div class="mb-4">
@@ -211,12 +225,34 @@ const handlePasswordSubmit = async () => {
                 <div class="form-text text-muted">格式: 0912345678</div>
               </div>
 
+              <div class="mb-3">
+                <label class="form-label fw-bold">本人已閱讀並同意以下條款及細則</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="platformRules" v-model="isPlatformRulesChecked">
+                    <label class="form-check-label" for="platformRules">
+                        <router-link to="/help?topic=platform-rules" class="text-primary text-decoration-underline" target="_blank">平台管理規章</router-link>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="privacyPolicy" v-model="isPrivacyPolicyChecked">
+                    <label class="form-check-label" for="privacyPolicy">
+                        <router-link to="/help?topic=privacy" class="text-primary text-decoration-underline" target="_blank">隱私政策</router-link>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="userTerms" v-model="isUserTermsChecked">
+                    <label class="form-check-label" for="userTerms">
+                        <router-link to="/help?topic=user-terms" class="text-primary text-decoration-underline" target="_blank">使用者條款</router-link>
+                    </label>
+                </div>
+              </div>
+
               <div v-if="errorMessage" class="alert alert-danger py-2 small">
                 {{ errorMessage }}
               </div>
 
               <div class="d-grid">
-                <button type="submit" class="btn btn-primary btn-lg fw-bold" :disabled="isLoading">
+                <button type="submit" class="btn btn-lg fw-bold" :class="{'btn-primary': isAgreed, 'btn-secondary': !isAgreed}" :disabled="isLoading || !isAgreed">
                   <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                   {{ isLoading ? '發送中...' : '發送驗證碼' }}
                 </button>
@@ -249,6 +285,10 @@ const handlePasswordSubmit = async () => {
                   >
                       {{ countdown > 0 ? `重新發送 (${countdown}s)` : '重新發送驗證碼' }}
                   </button>
+              </div>
+
+              <div class="text-center mb-3">
+                  <p class="text-danger fw-bold small mb-0">請務必使用申請人本人手機號碼，未來更換綁定門號手續繁雜。</p>
               </div>
 
               <div class="d-grid gap-3">

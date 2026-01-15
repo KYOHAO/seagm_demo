@@ -66,7 +66,9 @@ const handleNavClick = (e) => {
         </button>
 
         <!-- 2. Center: Brand (Logo) -->
-        <router-link to="/" class="navbar-brand fw-bold text-primary fs-3 mx-auto">幣商</router-link>
+        <router-link to="/" class="navbar-brand mx-auto py-0">
+          <img src="/logo.png" alt="New York Game Warehouse" height="40" />
+        </router-link>
 
         <!-- 3. Right: Login/Account Icon (Mobile Only) -->
         <div class="d-lg-none">
@@ -81,7 +83,9 @@ const handleNavClick = (e) => {
         <!-- Offcanvas Menu (Mobile) / Collapse (Desktop) -->
         <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
           <div class="offcanvas-header">
-            <h5 class="offcanvas-title fw-bold text-primary" id="offcanvasNavbarLabel">幣商</h5>
+            <h5 class="offcanvas-title" id="offcanvasNavbarLabel">
+               <img src="/logo.png" alt="New York Game Warehouse" height="30" />
+            </h5>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
           </div>
           <div class="offcanvas-body">
