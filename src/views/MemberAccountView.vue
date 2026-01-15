@@ -15,7 +15,7 @@ const toast = useToast()
 const router = useRouter()
 const route = useRoute()
 const { logout } = useAuth()
-const activeMenu = ref('orders')
+const activeMenu = ref('settings')
 const stats = ref({
   todayBuy: 0,
   todaySell: 0,
@@ -89,7 +89,10 @@ onMounted(() => {
     // Handle Tab Param
     const tab = route.query.tab
     if (tab === 'transactions') {
-        activeMenu.value = 'history'
+        activeMenu.value = 'orders'
+        if (route.query.sub) {
+            activeOrdersTab.value = route.query.sub
+        }
     } else if (tab === 'bank') {
         activeMenu.value = 'bank_accounts'
     } else if (tab === 'game') {
@@ -99,7 +102,7 @@ onMounted(() => {
     } else if (tab === 'account') {
         activeMenu.value = 'settings'
     } else {
-        activeMenu.value = 'orders' // Default
+        activeMenu.value = 'settings' // Default
     }
 })
 

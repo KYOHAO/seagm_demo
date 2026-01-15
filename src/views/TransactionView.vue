@@ -264,8 +264,14 @@ const confirmSellingOrder = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            toast.success('銷售訂單提交成功！')
-            router.push('/account?tab=transactions')
+            // toast.success('銷售訂單提交成功！') // Optional, modal is enough
+            orderResult.value = data.data.order || data.data
+            
+            const modalEl = document.getElementById('orderSuccessModal')
+            if (modalEl) {
+                successModalInstance.value = new Modal(modalEl)
+                successModalInstance.value.show()
+            }
         } else {
             toast.error(data.msg || '提交訂單失敗')
         }
@@ -320,7 +326,8 @@ const closeSuccessModal = () => {
     if (successModalInstance.value) {
         successModalInstance.value.hide()
     }
-    router.push('/account?tab=transactions')
+    const subTab = txType.value === 'sell' ? 'selling' : 'buying'
+    router.push(`/account?tab=transactions&sub=${subTab}`)
 }
 
 const goBack = () => {
@@ -516,31 +523,52 @@ const goBack = () => {
                   </div>
                   <div class="modal-body p-4">
                     <div v-if="orderResult" class="table-responsive">
-                      <table class="table table-bordered table-striped">
-                        <tbody>
-                          <tr><th width="30%">遊戲名稱</th><td>{{ gameName }}</td></tr>
-                          <!--<tr><th>點數類型 ID (Point ID)</th><td>{{ orderResult.point_id }}</td></tr>-->
-                          <tr><th>金幣數量</th><td>{{ orderResult.quantity }}</td></tr>
-                          <tr><th>比率</th><td>1 : {{ orderResult.unit_price }}</td></tr>
-                          <tr><th>總價</th><td>{{ formatNumber(orderResult.total_price) }}</td></tr>
-                          <!--<tr><th>付款方式 (Payment)</th><td>{{ orderResult.payments_label }} ({{ orderResult.payments }})</td></tr>-->
-                          <!--<tr><th>付款子類型 (Sub)</th><td>{{ orderResult.payments_sub || '-' }}</td></tr>-->
-                          
-                          <!-- Customer Info -->
-                          <!--<tr><th>付款人銀行代碼</th><td>{{ orderResult.payer_bank_code || '-' }}</td></tr>
-                          <tr><th>付款人帳號</th><td>{{ orderResult.payer_card_no || '-' }}</td></tr>-->
+                      <div v-if="txType === 'buy'">
+                          <table class="table table-bordered table-striped">
+                            <tbody>
+                              <tr><th width="30%">遊戲名稱</th><td>{{ gameName }}</td></tr>
+                              <tr><th>金幣數量</th><td>{{ orderResult.quantity }}</td></tr>
+                              <!--<tr><th>比率</th><td>1 : {{ orderResult.unit_price }}</td></tr>-->
+                              <tr><th>總價</th><td>{{ formatNumber(orderResult.total_price) }}</td></tr>
+                              
+                              <tr><th>收款銀行代碼</th><td>{{ orderResult.payee_bank_code }}</td></tr>
+                              <tr><th>收款帳號</th><td>{{ orderResult.payee_card_no }}</td></tr>
+                              <tr><th>會員遊戲帳號</th><td>{{ orderResult.payee_game_account }}</td></tr>
+                              
+                              <tr><th>狀態</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
+                              <tr><th>建立時間</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
+                            </tbody>
+                          </table>
+                           <div class="alert alert-warning mt-3">
+                              <i class="bi bi-info-circle me-2"></i>此付款帳號僅供當日與當次使用，付款後才完成買單掛單，付款後不可取消訂單。
+                          </div>
+                      </div>
+                      <div v-else>
+                           <table class="table table-bordered table-striped">
+                            <tbody>
+                              <tr><th width="30%">遊戲名稱</th><td>{{ gameName }}</td></tr>
+                              <tr><th>訂單 ID</th><td>{{ orderResult.id }}</td></tr>
+                              <tr><th>金幣數量</th><td>{{ formatNumber(orderResult.quantity) }}</td></tr>
+                              <!--<tr><th>已交付</th><td>{{ formatNumber(orderResult.delivered_quantity || 0) }}</td></tr>-->
+                              <!--<tr><th>比率</th><td>1 : {{ formatNumber(orderResult.unit_price) }}</td></tr>-->
+                              <tr><th>總價</th><td class="fw-bold text-primary">{{ formatNumber(orderResult.total_price) }}</td></tr>
+                              <tr><th>手續費</th><td class="text-danger">{{ formatNumber(orderResult.fee) }}</td></tr>
 
-                          <!-- Payee Info -->
-                          <tr><th>收款銀行代碼</th><td>{{ orderResult.payee_bank_code }}</td></tr>
-                          <tr><th>收款帳號</th><td>{{ orderResult.payee_card_no }}</td></tr>
-                          <tr><th>會員遊戲帳號</th><td>{{ orderResult.payee_game_account }}</td></tr>
-                          
-                          <tr><th>狀態</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
-                          <tr><th>建立時間</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
-                        </tbody>
-                      </table>
-                      <div class="alert alert-warning mt-3">
-                          <i class="bi bi-info-circle me-2"></i>此付款帳號僅供當日與當次使用，付款後才完成買單掛單，付款後不可取消訂單。
+                              <tr><th>會員遊戲帳號</th><td>{{ orderResult.payer_game_account }}</td></tr>
+                              <tr><th>收款遊戲帳號</th><td>{{ orderResult.payee_game_account }}</td></tr>
+                              
+                              <tr v-if="orderResult.bank_code"><th>銀行代碼</th><td>{{ orderResult.bank_code }}</td></tr>
+                              <tr v-if="orderResult.branch_code"><th>分行代碼</th><td>{{ orderResult.branch_code }}</td></tr>
+                              <tr v-if="orderResult.account_number"><th>銀行帳號</th><td>{{ orderResult.account_number }}</td></tr>
+                              <tr v-if="orderResult.account_name"><th>帳戶名稱</th><td>{{ orderResult.account_name }}</td></tr>
+
+                              <tr><th>狀態</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
+                              <tr><th>建立時間</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
+                            </tbody>
+                          </table>
+                          <div class="alert alert-info mt-3">
+                              <i class="bi bi-info-circle me-2"></i>賣單已建立，請等待買家配對。
+                          </div>
                       </div>
                     </div>
                   </div>
