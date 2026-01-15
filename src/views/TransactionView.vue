@@ -486,13 +486,16 @@ const goBack = () => {
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="term1" v-model="termsChecked1">
                 <label class="form-check-label" for="term1">
-                  我已閱讀並同意 <router-link to="/help?topic=user-terms" class="text-decoration-none text-secondary">服務條款</router-link>。
+                  我已閱讀並同意 <router-link to="/help?topic=user-terms" class="text-decoration-none text-secondary">會員條款</router-link>。
                 </label>
               </div>
               <div class="form-check mb-4">
                 <input class="form-check-input" type="checkbox" id="term2" v-model="termsChecked2">
-                <label class="form-check-label" for="term2">
+                <label v-if="txType === 'sell'" class="form-check-label" for="term2">
                   我已充分瞭解交易細節，轉幣完成後將不可取消訂單。
+                </label>
+                <label v-else class="form-check-label" for="term2">
+                  我已充分瞭解交易細節，轉帳完成後將不可取消訂單。
                 </label>
               </div>
 
