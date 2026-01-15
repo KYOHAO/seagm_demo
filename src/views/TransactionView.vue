@@ -397,7 +397,7 @@ const goBack = () => {
                   <div class="col-md-5">
                     <label class="form-label fw-bold">遊戲幣 (Game Currency)</label>
                     <div class="input-group">
-                      <input type="text" class="form-control" v-model.lazy="displayGameCurrencyAmount" disabled>
+                      <input type="text" class="form-control" v-model.lazy="displayGameCurrencyAmount">
                       <span class="input-group-text">Coins</span>
                     </div>
                   </div>
@@ -408,7 +408,7 @@ const goBack = () => {
                    <div class="col-md-5">
                     <label class="form-label fw-bold">遊戲幣 (Game Currency)</label>
                     <div class="input-group">
-                      <input type="text" class="form-control" v-model.lazy="displayGameCurrencyAmount" disabled>
+                      <input type="text" class="form-control" v-model.lazy="displayGameCurrencyAmount">
                       <span class="input-group-text">Coins</span>
                     </div>
                   </div>
