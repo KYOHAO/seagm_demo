@@ -469,13 +469,18 @@ const handleAddGameSubmit = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            toast.info('遊戲帳號綁定申請成功！驗證碼已發送。')
-            newGameAccountId.value = data.data.game_account.id
-            gameStep.value = 2
+            // toast.info('遊戲帳號綁定申請成功！驗證碼已發送。')
+            // newGameAccountId.value = data.data.game_account.id
+            // gameStep.value = 2
+            toast.success('遊戲帳號綁定成功！')
+            if (addGameModalInstance.value) {
+                addGameModalInstance.value.hide()
+            }
+            fetchGameAccounts()
         } else {
              const errorMsg = handleApiError(data)
              //alert(errorMsg || '綁定失敗。')
-             toast.error('綁定失敗。')
+             toast.error(errorMsg || '綁定失敗。')
         }
     } catch (error) {
         console.error('Bind Game Account Error:', error)
@@ -485,43 +490,43 @@ const handleAddGameSubmit = async () => {
     }
 }
 
-const handleGameVerifySubmit = async () => {
-    if (!addGameForm.value.verification_code || addGameForm.value.verification_code.length !== 6) {
-        toast.warning('請輸入6位數驗證碼。')
-        return
-    }
+// const handleGameVerifySubmit = async () => {
+//     if (!addGameForm.value.verification_code || addGameForm.value.verification_code.length !== 6) {
+//         toast.warning('請輸入6位數驗證碼。')
+//         return
+//     }
     
-    isAddGameLoading.value = true
-    const token = localStorage.getItem('authToken')
-    try {
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/verify`, {
-            method: 'POST',
-            body: JSON.stringify({
-                game_account_id: newGameAccountId.value,
-                verification_code: addGameForm.value.verification_code
-            })
-        })
+//     isAddGameLoading.value = true
+//     const token = localStorage.getItem('authToken')
+//     try {
+//         const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/game-account/verify`, {
+//             method: 'POST',
+//             body: JSON.stringify({
+//                 game_account_id: newGameAccountId.value,
+//                 verification_code: addGameForm.value.verification_code
+//             })
+//         })
         
-        const data = await response.json()
+//         const data = await response.json()
         
-        if (response.ok && data.code === 0) {
-            toast.success('遊戲帳號綁定成功！')
-             if (addGameModalInstance.value) {
-                addGameModalInstance.value.hide()
-            }
-            fetchGameAccounts()
-        } else {
-            const errorMsg = handleApiError(data)
-            //alert(errorMsg || '驗證失敗。')
-            toast.error('驗證失敗。')
-        }
-    } catch (error) {
-        console.error('Verify Game Account Error:', error)
-          toast.error('發生錯誤，請稍後再試。')
-    } finally {
-        isAddGameLoading.value = false
-    }
-}
+//         if (response.ok && data.code === 0) {
+//             toast.success('遊戲帳號綁定成功！')
+//              if (addGameModalInstance.value) {
+//                 addGameModalInstance.value.hide()
+//             }
+//             fetchGameAccounts()
+//         } else {
+//             const errorMsg = handleApiError(data)
+//             //alert(errorMsg || '驗證失敗。')
+//             toast.error('驗證失敗。')
+//         }
+//     } catch (error) {
+//         console.error('Verify Game Account Error:', error)
+//           toast.error('發生錯誤，請稍後再試。')
+//     } finally {
+//         isAddGameLoading.value = false
+//     }
+// }
 
 const openAddBankModal = () => {
     // Auto Prompt for KYC if level is 1
@@ -613,7 +618,7 @@ const handleAddBankSubmit = async () => {
         } else {
              const errorMsg = handleApiError(data)
              //alert(errorMsg || '綁定失敗。')
-             toast.error('綁定失敗。')
+             toast.error(errorMsg || '綁定失敗。')
         }
     } catch (error) {
         console.error('綁定銀行帳號錯誤:', error)
@@ -698,7 +703,7 @@ const handleBankVerifySubmit = async () => {
         } else {
             const errorMsg = handleApiError(data)
             //alert(errorMsg || '驗證失敗。')
-            toast.error('驗證失敗。')
+            toast.error(errorMsg || '驗證失敗。')
         }
     } catch (error) {
         console.error('Verify Bank Error:', error)
@@ -742,7 +747,7 @@ const openChangePasswordModal = async () => {
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || '發送驗證碼失敗。')
-      toast.error('發送驗證碼失敗。')
+      toast.error(errorMsg || '發送驗證碼失敗。')
     }
   } catch (error) {
     console.error('Send Code Error:', error)
@@ -799,7 +804,7 @@ const handleChangePasswordSubmit = async () => {
         } else {
             const errorMsg = handleApiError(data)
             //alert(errorMsg || '修改密碼失敗。')
-            toast.error('修改密碼失敗。')
+            toast.error(errorMsg || '修改密碼失敗。')
         }
     } catch (error) {
         console.error('Change Password Error:', error)
@@ -832,7 +837,7 @@ const sendKYCInitiate = async () => {
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || 'Failed to initiate KYC.')
-      toast.error('KYC 啟動失敗。')
+      toast.error(errorMsg || 'KYC 啟動失敗。')
     }
   } catch (error) {
     console.error('KYC Error:', error)
@@ -893,7 +898,7 @@ const sendEmailCode = async () => {
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || '發送驗證碼失敗。')
-      toast.error('發送驗證碼失敗。')
+      toast.error(errorMsg || '發送驗證碼失敗。')
     }
   } catch (error) {
     console.error('Email Verify Error:', error)
@@ -935,7 +940,7 @@ const confirmEmail = async () => {
     } else {
       const errorMsg = handleApiError(data)
       //alert(errorMsg || '驗證失敗。')
-      toast.error('Email 驗證失敗。')
+      toast.error(errorMsg || 'Email 驗證失敗。')
     }
   } catch (error) {
     console.error('Email Confirm Error:', error)
