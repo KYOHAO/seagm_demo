@@ -41,6 +41,12 @@ const router = createRouter({
             meta: { requiresAuth: true }
         },
         {
+            path: '/transaction/result',
+            name: 'transaction-result',
+            component: () => import('../views/TransactionResultView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/register-phone',
             name: 'register-phone',
             component: () => import('../views/RegisterPhoneView.vue')

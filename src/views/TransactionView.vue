@@ -162,8 +162,8 @@ watch(gameCurrencyAmount, (newVal) => {
   isUpdating.value = false
 })
 
-const sellingDraftId = ref(null)
-const smsVerificationCode = ref('')
+// const sellingDraftId = ref(null) // Unused
+// const smsVerificationCode = ref('') // Unused
 
 const handleConfirm = async () => {
     if (twdAmount.value < 1000) {
@@ -171,14 +171,24 @@ const handleConfirm = async () => {
         return
     }
 
-    if (txType.value === 'sell') {
-        await createSellingDraft()
-    } else {
-        showOtpSection.value = true
-    }
+    // Direct confirm for both Buy and Sell
+    showOtpSection.value = true
 }
 
-const createSellingDraft = async () => {
+const submitOrder = async () => {
+  if (!termsChecked1.value || !termsChecked2.value) {
+    toast.warning('請接受所有條款和條件。')
+    return
+  }
+
+  if (txType.value === 'sell') {
+      await createSellingOrder()
+  } else {
+      createBuyingOrder()
+  }
+}
+
+const createSellingOrder = async () => {
     if (isSubmitting.value) return
     isSubmitting.value = true
     try {
@@ -194,7 +204,7 @@ const createSellingDraft = async () => {
             price: twdAmount.value
         }
 
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling/draft`, {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -206,65 +216,7 @@ const createSellingDraft = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            toast.info('簡訊驗證碼已發送至您的手機！')
-            sellingDraftId.value = data.data.draft_id
-            showOtpSection.value = true
-        } else {
-            toast.error(data.msg || '建立訂單草稿失敗')
-        }
-    } catch (error) {
-        console.error('Create Draft Error:', error)
-        toast.error('建立訂單草稿時發生錯誤')
-    } finally {
-        isSubmitting.value = false
-    }
-}
-
-const sendOtp = () => {
-  // Not used in this flow as Draft API sends it, but keeping if needed for resend later? uesr didn't ask for resend.
-  toast.info('簡訊驗證碼已發送至您的手機！')
-}
-
-const submitOrder = async () => {
-  if (!termsChecked1.value || !termsChecked2.value) {
-    toast.warning('請接受所有條款和條件。')
-    return
-  }
-
-  if (txType.value === 'sell') {
-      if (!smsVerificationCode.value) {
-          toast.warning('請輸入簡訊驗證碼')
-          return
-      }
-      await confirmSellingOrder()
-  } else {
-      createBuyingOrder()
-  }
-}
-
-const confirmSellingOrder = async () => {
-    if (isSubmitting.value) return
-    isSubmitting.value = true
-    try {
-        const token = localStorage.getItem('authToken')
-        const payload = {
-            draft_id: sellingDraftId.value,
-            verification_code: smsVerificationCode.value
-        }
-
-        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/selling/confirm`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        })
-
-        const data = await response.json()
-
-        if (response.ok && data.code === 0) {
-            // toast.success('銷售訂單提交成功！') // Optional, modal is enough
+            // toast.success('銷售訂單提交成功！')
             orderResult.value = data.data.order || data.data
             
             const modalEl = document.getElementById('orderSuccessModal')
@@ -273,10 +225,11 @@ const confirmSellingOrder = async () => {
                 successModalInstance.value.show()
             }
         } else {
+             // Handle specific errors like KYC/Bank/Game binding if API returns them
             toast.error(data.msg || '提交訂單失敗')
         }
     } catch (error) {
-        console.error('Confirm Order Error:', error)
+        console.error('Create Sell Order Error:', error)
         toast.error('提交訂單時發生錯誤')
     } finally {
         isSubmitting.value = false
@@ -290,9 +243,14 @@ const createBuyingOrder = async () => {
     if (isSubmitting.value) return
     isSubmitting.value = true
     try {
+        const successUrl = `${import.meta.env.VITE_FRONTEND_BASE_URL}/transaction/result?status=success`
+        const errorUrl = `${import.meta.env.VITE_FRONTEND_BASE_URL}/transaction/result?status=error`
+
         const payload = {
             store_id: route.query.storeId,
-            price: twdAmount.value
+            price: twdAmount.value,
+            success_url: successUrl,
+            error_url: errorUrl
         }
 
         const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/orders/buying`, {
@@ -303,13 +261,31 @@ const createBuyingOrder = async () => {
         const data = await response.json()
 
         if (response.ok && data.code === 0) {
-            // alert('購買訂單建立成功！')
             orderResult.value = data.data.order || data.data // Adjust based on actual API response structure
             
-            const modalEl = document.getElementById('orderSuccessModal')
-            if (modalEl) {
-                successModalInstance.value = new Modal(modalEl)
-                successModalInstance.value.show()
+            // Check for authentication requirement
+            if (data.data.authentication && data.data.authentication.required) {
+                // Show modal or alert, then redirect
+                 const modalEl = document.getElementById('authRedirectModal')
+                if (modalEl) {
+                    // We can reuse a modal or create a new one. 
+                    // Let's assume we create a simple one or just use confirm.
+                    // Or simpler: use a new Ref boolean to show a "Redirecting..." overlay/modal.
+                    // Given the user request: "請跳出視窗，並提示即將跳轉至人辨識頁面，按下同意後..."
+                    showAuthRedirectModal(data.data.authentication.redirect_url)
+                } else {
+                     // Fallback check if modal missing (shouldn't happen if we add it)
+                     if(confirm('為了您的交易安全，即將跳轉至人臉辨識頁面進行驗證。')) {
+                         window.location.href = data.data.authentication.redirect_url
+                     }
+                }
+            } else {
+                // No auth required, show success modal directly
+                const modalEl = document.getElementById('orderSuccessModal')
+                if (modalEl) {
+                    successModalInstance.value = new Modal(modalEl)
+                    successModalInstance.value.show()
+                }
             }
         } else {
             toast.error(data.msg || '建立訂單失敗')
@@ -319,6 +295,24 @@ const createBuyingOrder = async () => {
         toast.error('建立訂單時發生錯誤')
     } finally {
         isSubmitting.value = false
+    }
+}
+
+const authRedirectUrl = ref('')
+const authRedirectModalInstance = ref(null)
+
+const showAuthRedirectModal = (url) => {
+    authRedirectUrl.value = url
+    const modalEl = document.getElementById('authRedirectModal')
+    if (modalEl) {
+        authRedirectModalInstance.value = new Modal(modalEl)
+        authRedirectModalInstance.value.show()
+    }
+}
+
+const handleAuthRedirectConfirm = () => {
+    if (authRedirectUrl.value) {
+        window.location.href = authRedirectUrl.value
     }
 }
 
@@ -499,14 +493,13 @@ const goBack = () => {
                 </label>
               </div>
 
-               <div v-if="txType === 'sell'" class="mb-4">
+              <!-- <div v-if="txType === 'sell'" class="mb-4">
                 <label class="form-label fw-bold">簡訊驗證碼</label>
                 <div class="input-group">
                   <input type="text" class="form-control" placeholder="輸入簡訊驗證碼" v-model="smsVerificationCode">
-                  <!-- <button class="btn btn-outline-primary" type="button" @click="sendOtp">發送驗證碼</button> -->
                 </div>
                 <div class="form-text text-muted">驗證碼已發送至您的手機</div>
-              </div>
+              </div> -->
 
               <div class="d-grid">
                 <button class="btn btn-success btn-lg fw-bold" @click="submitOrder" :disabled="isSubmitting">
@@ -571,7 +564,24 @@ const goBack = () => {
                           </table>
                           <div class="alert alert-info mt-3">
                               <i class="bi bi-info-circle me-2"></i>賣單已建立，請等待買家配對。
-                          </div>
+                           <!-- Auth Redirect Modal -->
+            <div class="modal fade" id="authRedirectModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header border-0 bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock-fill me-2"></i>安全驗證提醒</h5>
+                  </div>
+                  <div class="modal-body p-4 text-center">
+                    <p class="fs-5 mb-3">為了保障您的交易安全，需要進行人臉辨識驗證。</p>
+                    <p class="text-muted">按下「前往驗證」後，將跳轉至驗證頁面。</p>
+                  </div>
+                  <div class="modal-footer border-0 justify-content-center">
+                     <button type="button" class="btn btn-primary px-5" @click="handleAuthRedirectConfirm">前往驗證</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+           </div>
                       </div>
                     </div>
                   </div>
