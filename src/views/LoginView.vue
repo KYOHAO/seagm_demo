@@ -5,6 +5,7 @@ import { useAuth } from '../composables/useAuth'
 import { useToast } from '../composables/useToast'
 import { handleApiError } from '../utils/apiError'
 import { apiFetch } from '../utils/api'
+import { ERROR_MESSAGES } from '../utils/errorMessages'
 
 const router = useRouter()
 const { login } = useAuth()
@@ -64,7 +65,7 @@ const handleLogin = async () => {
     }
   } catch (error) {
     console.error('Login Error:', error)
-    errorMessage.value = '發生錯誤，請稍後再試。'
+    errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
   } finally {
     isLoading.value = false
   }

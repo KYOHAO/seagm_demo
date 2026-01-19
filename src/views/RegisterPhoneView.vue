@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onUnmounted, computed } from 'vue'
+import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { useRouter } from 'vue-router'
 import { handleApiError } from '../utils/apiError'
 import { useToast } from '../composables/useToast'
@@ -76,7 +77,7 @@ const handlePhoneSubmit = async () => {
     }
   } catch (error) {
     console.error('API Error:', error)
-    errorMessage.value = '發生錯誤，請稍後再試。'
+    errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
   } finally {
     isLoading.value = false
   }
@@ -107,7 +108,7 @@ const handleResendCode = async () => {
         }
     } catch (error) {
         console.error('API Error:', error)
-        errorMessage.value = '發生錯誤，請稍後再試。'
+        errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
     } finally {
         isLoading.value = false
     }
@@ -143,7 +144,7 @@ const handleOtpSubmit = async () => {
     }
   } catch (error) {
     console.error('API Error:', error)
-    errorMessage.value = '發生錯誤，請稍後再試。'
+    errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
   } finally {
     isLoading.value = false
   }
@@ -184,7 +185,7 @@ const handlePasswordSubmit = async () => {
     }
   } catch (error) {
     console.error('API Error:', error)
-    errorMessage.value = '發生錯誤，請稍後再試。'
+    errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
   } finally {
     isLoading.value = false
   }
@@ -292,7 +293,10 @@ const handlePasswordSubmit = async () => {
               </div>
 
               <div class="d-grid gap-3">
-                <button type="submit" class="btn btn-success btn-lg fw-bold">驗證 & 繼續</button>
+                <button type="submit" class="btn btn-success btn-lg fw-bold" :disabled="isLoading">
+                    <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    {{ isLoading ? '驗證中...' : '驗證 & 繼續' }}
+                </button>
                 <button type="button" class="btn btn-link text-decoration-none text-muted" @click="step = 1;otpCode = ''">
                   更改手機號碼
                 </button>

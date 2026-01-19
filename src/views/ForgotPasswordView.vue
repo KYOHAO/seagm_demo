@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { useRouter } from 'vue-router'
 import { useToast } from '../composables/useToast'
 import { handleApiError } from '../utils/apiError'
@@ -49,7 +50,7 @@ const handlePhoneSubmit = async () => {
     }
   } catch (error) {
     console.error('API Error:', error)
-    errorMessage.value = '發生錯誤，請稍後再試。'
+    errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
   } finally {
     isLoading.value = false
   }
@@ -93,7 +94,7 @@ const handleResetSubmit = async () => {
     }
   } catch (error) {
     console.error('API Error:', error)
-    errorMessage.value = '發生錯誤，請稍後再試。'
+    errorMessage.value = ERROR_MESSAGES.GENERAL_ERROR_CONTACT
   } finally {
     isLoading.value = false
   }

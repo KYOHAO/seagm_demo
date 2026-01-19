@@ -1,4 +1,5 @@
 <script setup>
+import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { ref, computed, watch, onMounted } from 'vue'
 import { formatNumber, parseNumber } from '../utils/format'
 import { useToast } from '../composables/useToast'
@@ -103,7 +104,7 @@ onMounted(async () => {
             selectedBankAccount.value = validBankAccounts.value[0].id
         }
     } catch (error) {
-        console.error('Initialization Error:', error)
+        console.error('初始化錯誤:', error)
     } finally {
         isLoading.value = false
     }
@@ -229,8 +230,8 @@ const createSellingOrder = async () => {
             toast.error(data.msg || '提交訂單失敗')
         }
     } catch (error) {
-        console.error('Create Sell Order Error:', error)
-        toast.error('提交訂單時發生錯誤')
+        console.error('建立銷售訂單錯誤:', error)
+        toast.error(ERROR_MESSAGES.SUBMIT_ORDER_ERROR)
     } finally {
         isSubmitting.value = false
     }
@@ -291,8 +292,8 @@ const createBuyingOrder = async () => {
             toast.error(data.msg || '建立訂單失敗')
         }
     } catch (error) {
-        console.error('Create Order Error:', error)
-        toast.error('建立訂單時發生錯誤')
+        console.error('建立訂單錯誤:', error)
+        toast.error(ERROR_MESSAGES.CREATE_ORDER_ERROR)
     } finally {
         isSubmitting.value = false
     }

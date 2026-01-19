@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { formatNumber } from '../utils/format'
 import { getCookie, setCookie } from '../utils/cookies'
 import { useRouter, useRoute } from 'vue-router'
@@ -243,7 +244,7 @@ const openOrderDetailsModal = async (orderId) => {
         }
     } catch (error) {
         console.error('Fetch Order Details Error:', error)
-        toast.error('發生錯誤，請稍後再試')
+        toast.error('發生錯誤，請稍後再試或與客服聯繫。')
     } finally {
         isOrderDetailsLoading.value = false
     }
@@ -270,8 +271,8 @@ const openSellingOrderDetailsModal = async (orderId) => {
              toast.error(errorMsg || '取得訂單詳細失敗')
         }
     } catch (error) {
-        console.error('Fetch Order Details Error:', error)
-        toast.error('發生錯誤，請稍後再試')
+        console.error('取得訂單詳細錯誤:', error)
+        toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
     } finally {
         isOrderDetailsLoading.value = false
     }
@@ -344,7 +345,7 @@ const fetchUserInfo = async () => {
             }
         }
     } catch (error) {
-        console.error('Fetch User Info Error:', error)
+        console.error('取得使用者資訊錯誤:', error)
     } finally {
         isUserInfoLoading.value = false
     }
@@ -372,8 +373,8 @@ const deleteBankAccount = async () => {
             toast.error(errorMsg || '刪除失敗')
         }
     } catch (error) {
-        console.error('Delete Bank Account Error:', error)
-        toast.error('發生錯誤，請稍後再試')
+        console.error('刪除銀行帳號錯誤:', error)
+        toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
     } finally {
         isDeletingBank.value = false
     }
@@ -393,10 +394,10 @@ const fetchBankAccounts = async () => {
         if (response.ok && data.code === 0) {
             bankAccounts.value = data.data.bank_accounts
         } else {
-            console.error('Failed to fetch bank accounts:', data)
+            console.error('取得銀行帳號錯誤:', data)
         }
     } catch (error) {
-        console.error('Fetch Bank Accounts Error:', error)
+        console.error('取得銀行帳號錯誤:', error)
     } finally {
         isBankLoading.value = false
     }
@@ -417,10 +418,10 @@ const fetchGameAccounts = async () => {
         if (response.ok && data.code === 0) {
             gameAccounts.value = data.data.game_accounts
         } else {
-            console.error('Failed to fetch game accounts:', data)
+            console.error('取得遊戲帳號錯誤:', data)
         }
     } catch (error) {
-        console.error('Fetch Game Accounts Error:', error)
+        console.error('取得遊戲帳號錯誤:', error)
     } finally {
         isGameAccountsLoading.value = false
     }
@@ -483,8 +484,8 @@ const handleAddGameSubmit = async () => {
              toast.error(errorMsg || '綁定失敗。')
         }
     } catch (error) {
-        console.error('Bind Game Account Error:', error)
-        toast.error('發生錯誤，請稍後再試。')
+        console.error('綁定遊戲帳號錯誤:', error)
+        toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
     } finally {
         isAddGameLoading.value = false
     }
@@ -522,7 +523,7 @@ const handleAddGameSubmit = async () => {
 //         }
 //     } catch (error) {
 //         console.error('Verify Game Account Error:', error)
-//           toast.error('發生錯誤，請稍後再試。')
+//           toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
 //     } finally {
 //         isAddGameLoading.value = false
 //     }
@@ -622,7 +623,7 @@ const handleAddBankSubmit = async () => {
         }
     } catch (error) {
         console.error('綁定銀行帳號錯誤:', error)
-        toast.error('發生錯誤，請稍後再試。')
+        toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
     } finally {
         isAddBankLoading.value = false
 
@@ -706,8 +707,8 @@ const handleBankVerifySubmit = async () => {
             toast.error(errorMsg || '驗證失敗。')
         }
     } catch (error) {
-        console.error('Verify Bank Error:', error)
-          toast.error('發生錯誤，請稍後再試。')
+        console.error('驗證銀行帳號錯誤:', error)
+        toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
     } finally {
         isAddBankLoading.value = false
     }
@@ -751,7 +752,7 @@ const openChangePasswordModal = async () => {
     }
   } catch (error) {
     console.error('Send Code Error:', error)
-    toast.error('發生錯誤，請稍後再試。')
+    toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
   } finally {
     isChangePasswordLoading.value = false
   }
@@ -808,7 +809,7 @@ const handleChangePasswordSubmit = async () => {
         }
     } catch (error) {
         console.error('Change Password Error:', error)
-        toast.error('發生錯誤，請稍後再試。')
+        toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
     } finally {
         isChangePasswordLoading.value = false
     }
@@ -841,7 +842,7 @@ const sendKYCInitiate = async () => {
     }
   } catch (error) {
     console.error('KYC Error:', error)
-    toast.error('發生錯誤，請稍後再試。')
+    toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
   } finally {
     isKycLoading.value = false
   }
@@ -902,7 +903,7 @@ const sendEmailCode = async () => {
     }
   } catch (error) {
     console.error('Email Verify Error:', error)
-    toast.error('發生錯誤，請稍後再試。')
+    toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
   } finally {
     isEmailLoading.value = false
   }
@@ -944,7 +945,7 @@ const confirmEmail = async () => {
     }
   } catch (error) {
     console.error('Email Confirm Error:', error)
-    toast.error('發生錯誤，請稍後再試。')
+    toast.error(ERROR_MESSAGES.GENERAL_ERROR_CONTACT)
   } finally {
     isEmailLoading.value = false
   }
