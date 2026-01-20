@@ -13,3 +13,15 @@ export const parseNumber = (str) => {
     const n = parseFloat(cleaned)
     return isNaN(n) ? 0 : n
 }
+
+export const getBankLabel = (bankCode) => {
+    if (!bankCode) return ''
+    try {
+        const banks = JSON.parse(localStorage.getItem('supportedBanks') || '[]')
+        const bank = banks.find(b => b.code === bankCode)
+        return bank ? `${bank.name} (${bankCode})` : bankCode
+    } catch (e) {
+        console.error('Error parsing supportedBanks:', e)
+        return bankCode
+    }
+}

@@ -1,12 +1,15 @@
 <script setup>
 import { ERROR_MESSAGES } from '../utils/errorMessages'
 import { ref, computed, watch, onMounted } from 'vue'
-import { formatNumber, parseNumber } from '../utils/format'
+import { formatNumber, parseNumber, getBankLabel } from '../utils/format'
 import { useToast } from '../composables/useToast'
 import { useRoute, useRouter } from 'vue-router'
 import { Modal } from 'bootstrap'
 import { useUserAccounts } from '../composables/useUserAccounts'
 import { apiFetch } from '../utils/api'
+import { useCommon } from '../composables/useCommon'
+
+const { copyToClipboard } = useCommon()
 
 const route = useRoute()
 const router = useRouter()
@@ -528,8 +531,8 @@ const goBack = () => {
                               <!--<tr><th>比率</th><td>1 : {{ orderResult.unit_price }}</td></tr>-->
                               <tr><th>總價</th><td>{{ formatNumber(orderResult.total_price) }}</td></tr>
                               
-                              <tr><th>收款銀行代碼</th><td>{{ orderResult.payee_bank_code }}</td></tr>
-                              <tr><th>收款帳號</th><td>{{ orderResult.payee_card_no }}</td></tr>
+                              <tr><th>平台收款銀行</th><td>{{ getBankLabel(orderResult.payee_bank_code) }}</td></tr>
+                              <tr><th>平台收款帳號</th><td>{{ orderResult.payee_card_no }}</td></tr>
                               <tr><th>會員遊戲帳號</th><td>{{ orderResult.payee_game_account }}</td></tr>
                               
                               <tr><th>狀態</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
@@ -544,7 +547,14 @@ const goBack = () => {
                            <table class="table table-bordered table-striped">
                             <tbody>
                               <tr><th width="30%">遊戲名稱</th><td>{{ gameName }}</td></tr>
-                              <tr><th>訂單 ID</th><td>{{ orderResult.id }}</td></tr>
+                              <tr><th>訂單 ID</th>
+                                  <td class="position-relative">
+                                      {{ orderResult.id }}
+                                      <button class="btn btn-sm text-secondary position-absolute top-50 end-0 translate-middle-y me-1" @click="copyToClipboard(orderResult.id)" title="複製">
+                                          <i class="bi bi-copy"></i>
+                                      </button>
+                                  </td>
+                              </tr>
                               <tr><th>金幣數量</th><td>{{ formatNumber(orderResult.quantity) }}</td></tr>
                               <!--<tr><th>已交付</th><td>{{ formatNumber(orderResult.delivered_quantity || 0) }}</td></tr>-->
                               <!--<tr><th>比率</th><td>1 : {{ formatNumber(orderResult.unit_price) }}</td></tr>-->
@@ -552,19 +562,26 @@ const goBack = () => {
                               <tr><th>手續費</th><td class="text-danger">{{ formatNumber(orderResult.fee) }}</td></tr>
 
                               <tr><th>會員遊戲帳號</th><td>{{ orderResult.payer_game_account }}</td></tr>
-                              <tr><th>收款遊戲帳號</th><td>{{ orderResult.payee_game_account }}</td></tr>
+                              <tr><th>平台收幣帳號</th>
+                                  <td class="position-relative">
+                                      {{ orderResult.payee_game_account }}
+                                      <button class="btn btn-sm text-secondary position-absolute top-50 end-0 translate-middle-y me-1" @click="copyToClipboard(orderResult.payee_game_account)" title="複製">
+                                          <i class="bi bi-copy"></i>
+                                      </button>
+                                  </td>
+                              </tr>
                               
-                              <tr v-if="orderResult.bank_code"><th>銀行代碼</th><td>{{ orderResult.bank_code }}</td></tr>
-                              <tr v-if="orderResult.branch_code"><th>分行代碼</th><td>{{ orderResult.branch_code }}</td></tr>
-                              <tr v-if="orderResult.account_number"><th>銀行帳號</th><td>{{ orderResult.account_number }}</td></tr>
-                              <tr v-if="orderResult.account_name"><th>帳戶名稱</th><td>{{ orderResult.account_name }}</td></tr>
+                              <tr v-if="orderResult.bank_code"><th>收款銀行</th><td>{{ getBankLabel(orderResult.bank_code) }}</td></tr>
+                              <!-- <tr v-if="orderResult.branch_code"><th>收款分行</th><td>{{ orderResult.branch_code }}</td></tr> -->
+                              <tr v-if="orderResult.account_number"><th>收款銀行帳號</th><td>{{ orderResult.account_number }}</td></tr>
+                              <tr v-if="orderResult.account_name"><th>收款人姓名</th><td>{{ orderResult.account_name }}</td></tr>
 
-                              <tr><th>狀態</th><td>{{ orderResult.status_label }} ({{ orderResult.status }})</td></tr>
+                              <tr><th>狀態</th><td>{{ orderResult.status_label }}</td></tr><!-- ({{ orderResult.status }}) -->
                               <tr><th>建立時間</th><td>{{ new Date(orderResult.created_at).toLocaleString() }}</td></tr>
                             </tbody>
                           </table>
                           <div class="alert alert-info mt-3">
-                              <i class="bi bi-info-circle me-2"></i>賣單已建立，請等待買家配對。
+                              <i class="bi bi-info-circle me-2"></i>請先完成轉幣，平台確認後才會開始配對買家。
                            <!-- Auth Redirect Modal -->
             <div class="modal fade" id="authRedirectModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
               <div class="modal-dialog modal-dialog-centered">

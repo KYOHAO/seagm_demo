@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { ERROR_MESSAGES } from '../utils/errorMessages'
-import { formatNumber } from '../utils/format'
+import { formatNumber, getBankLabel } from '../utils/format'
 import { getCookie, setCookie } from '../utils/cookies'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '../composables/useToast'
@@ -11,6 +11,9 @@ import { handleApiError } from '../utils/apiError'
 import { useAuth } from '../composables/useAuth'
 import { apiFetch } from '../utils/api'
 import { getBuyingOrderStatusInfo, getSellingOrderStatusInfo } from '../utils/statusMapping'
+import { useCommon } from '../composables/useCommon'
+
+const { copyToClipboard } = useCommon()
 
 const toast = useToast()
 const router = useRouter()
@@ -84,9 +87,43 @@ const selectedOrder = ref(null)
 const orderDetailsModalInstance = ref(null)
 const isOrderDetailsLoading = ref(false)
 
+const pollingTimer = ref(null)
+
+const fetchAccountInfo = async () => {
+    const token = localStorage.getItem('authToken')
+    if (!token) return
+
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/account/info`, {
+            method: 'GET'
+        })
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            // Update stats
+            const volume = data.data.today_volume
+            stats.value.todayBuy = volume.buying
+            stats.value.todaySell = volume.selling
+            // Assuming balance means remaining quota based on 500k limit mentioned in UI
+            stats.value.balance = volume.total 
+            
+            // Optionally update user info if provided
+             if (data.data.user) {
+                userInfo.value = data.data.user
+                setCookie('userInfo', data.data.user)
+             }
+        }
+    } catch (error) {
+        console.error('Failed to fetch account info:', error)
+    }
+}
+
 onMounted(() => {
     fetchUserInfo()
+    fetchAccountInfo() // Initial fetch
     
+    // Poll every minute
+    pollingTimer.value = setInterval(fetchAccountInfo, 60000)
+
     // Handle Tab Param
     const tab = route.query.tab
     if (tab === 'transactions') {
@@ -104,6 +141,12 @@ onMounted(() => {
         activeMenu.value = 'settings'
     } else {
         activeMenu.value = 'settings' // Default
+    }
+})
+
+onUnmounted(() => {
+    if (pollingTimer.value) {
+        clearInterval(pollingTimer.value)
     }
 })
 
@@ -222,7 +265,7 @@ const fetchSellingOrders = async (page = 1) => {
 
 }
 
-const openOrderDetailsModal = async (orderId) => {
+const openBuyingOrderDetailsModal = async (orderId) => {
     isOrderDetailsLoading.value = true
     selectedOrder.value = null 
     
@@ -233,7 +276,7 @@ const openOrderDetailsModal = async (orderId) => {
         if (response.ok && data.code === 0) {
             selectedOrder.value = data.data.order
             
-            const modalEl = document.getElementById('orderDetailsModal')
+            const modalEl = document.getElementById('buyingOrderDetailsModal')
             if (modalEl) {
                 orderDetailsModalInstance.value = new Modal(modalEl)
                 orderDetailsModalInstance.value.show()
@@ -393,6 +436,12 @@ const fetchBankAccounts = async () => {
 
         if (response.ok && data.code === 0) {
             bankAccounts.value = data.data.bank_accounts
+            
+            // Fetch branch names for relevant banks
+            const uniqueBanks = [...new Set(bankAccounts.value.map(b => b.bank_code))]
+            uniqueBanks.forEach(code => {
+                fetchBankBranchesForLabel(code)
+            })
         } else {
             console.error('取得銀行帳號錯誤:', data)
         }
@@ -644,6 +693,31 @@ const fetchSupportedBanks = async () => {
         console.error('取得銀行列表錯誤:', error)
     } finally {
         isBankListLoading.value = false
+    }
+}
+
+const branchNames = ref({})
+const fetchedBanks = ref(new Set())
+
+const getBranchLabel = (branchCode) => {
+    if (!branchCode) return ''
+    return branchNames.value[branchCode] || branchCode
+}
+
+const fetchBankBranchesForLabel = async (bankCode) => {
+    if (!bankCode || fetchedBanks.value.has(bankCode)) return
+
+    fetchedBanks.value.add(bankCode)
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/supported-banks/${bankCode}/branches`)
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            data.data.branches.forEach(branch => {
+                branchNames.value[branch.code] = branch.name
+            })
+        }
+    } catch (error) {
+        console.error(`Failed to fetch branches for ${bankCode}:`, error)
     }
 }
 
@@ -1078,7 +1152,12 @@ const confirmEmail = async () => {
                           </thead>
                           <tbody>
                               <tr v-for="order in activeBuyingOrders" :key="order.id">
-                                  <td>{{ order.id }}</td>
+                                  <td>
+                                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 me-2" @click="copyToClipboard(order.id)" title="複製">
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                    <span class="fw-bold">{{ order.id }}</span>
+                                  </td>
                                   <td class="text-center">{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td> 
@@ -1093,7 +1172,7 @@ const confirmEmail = async () => {
                                   </td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
                                   <td class="text-center">
-                                      <button class="btn btn-sm btn-outline-primary" @click="openOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
+                                      <button class="btn btn-sm btn-outline-primary" @click="openBuyingOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
                                           <span v-if="isOrderDetailsLoading && selectedOrder?.id === order.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                           <span v-else>查看</span>
                                       </button>
@@ -1124,7 +1203,12 @@ const confirmEmail = async () => {
                           </thead>
                           <tbody>
                               <tr v-for="order in activeSellingOrders" :key="order.id">
-                                  <td>{{ order.id }}</td>
+                                  <td>
+                                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 me-2" @click="copyToClipboard(order.id)" title="複製">
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                    <span class="fw-bold">{{ order.id }}</span>
+                                  </td>
                                   <td class="text-center">{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td>
@@ -1185,7 +1269,12 @@ const confirmEmail = async () => {
                           </thead>
                           <tbody>
                               <tr v-for="order in buyingOrders" :key="order.id">
-                                  <td>{{ order.id }}</td>
+                                  <td>
+                                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 me-2" @click="copyToClipboard(order.id)" title="複製">
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                    <span class="fw-bold">{{ order.id }}</span>
+                                  </td>
                                   <td class="text-center">{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td> 
@@ -1200,7 +1289,7 @@ const confirmEmail = async () => {
                                   </td>
                                   <td>{{ new Date(order.created_at).toLocaleString() }}</td>
                                   <td class="text-center">
-                                      <button class="btn btn-sm btn-outline-primary" @click="openOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
+                                      <button class="btn btn-sm btn-outline-primary" @click="openBuyingOrderDetailsModal(order.id)" :disabled="isOrderDetailsLoading">
                                           <span v-if="isOrderDetailsLoading && selectedOrder?.id === order.id" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                           <span v-else>查看</span>
                                       </button>
@@ -1243,7 +1332,12 @@ const confirmEmail = async () => {
                           </thead>
                           <tbody>
                               <tr v-for="order in sellingOrders" :key="order.id">
-                                  <td>{{ order.id }}</td>
+                                  <td>
+                                    <button class="btn btn-sm btn-outline-secondary p-0 px-1 me-2" @click="copyToClipboard(order.id)" title="複製">
+                                        <i class="bi bi-copy"></i>
+                                    </button>
+                                    <span class="fw-bold">{{ order.id }}</span>
+                                  </td>
                                   <td class="text-center">{{ getStoreName(order.store_id) }}</td>
                                   <td class="text-end">{{ formatNumber(order.quantity) }}</td>
                                   <td class="text-end">{{ formatNumber(order.total_price) }}</td>
@@ -1363,16 +1457,16 @@ const confirmEmail = async () => {
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th>銀行代碼</th>
-                                <th>分行代碼</th>
+                                <th>銀行名稱 (代碼)</th>
+                                <th>分行名稱 (代碼)</th>
                                 <th>帳號</th>
                                 <th>狀態</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-for="bank in bankAccounts" :key="bank.id">
-                                <td>{{ bank.bank_code }}</td>
-                                <td>{{ bank.branch_code }}</td>
+                                <td>{{ getBankLabel(bank.bank_code) }} </td>
+                                <td>{{ getBranchLabel(bank.branch_code) }} ({{ bank.branch_code }})</td>
                                 <td>{{ bank.account_number }}</td>
                                 <td>
                                     <span class="badge" :class="bank.status === 2 ? 'bg-success' : 'bg-secondary'">
@@ -1695,8 +1789,8 @@ const confirmEmail = async () => {
       </div>
     </div>
 
-    <!-- Order Details Modal -->
-    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+    <!-- Buying Order Details Modal -->
+    <div class="modal fade" id="buyingOrderDetailsModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header border-0">
@@ -1705,18 +1799,20 @@ const confirmEmail = async () => {
           </div>
           <div class="modal-body py-4" v-if="selectedOrder">
               <ul class="list-group list-group-flush small">
+
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">訂單 ID</span>
-                      <span class="fw-bold">{{ selectedOrder.id }}</span>
+                      <div class="d-flex align-items-center">
+                          <span class="fw-bold me-2">{{ selectedOrder.id }}</span>
+                          <button class="btn btn-sm btn-outline-secondary p-0 px-1" @click="copyToClipboard(selectedOrder.id)" title="複製">
+                              <i class="bi bi-copy"></i>
+                          </button>
+                      </div>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">遊戲名稱</span>
                       <span>{{ getStoreName(selectedOrder.store_id) }}</span>
                   </li>
-                  <!--<li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">點數類型 ID (Point ID)</span>
-                      <span>{{ selectedOrder.point_id }}</span>
-                  </li>-->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">金幣數量</span>
                       <span>{{ formatNumber(selectedOrder.quantity) }}</span>
@@ -1741,22 +1837,27 @@ const confirmEmail = async () => {
 
                   <!-- Payer Info -->
                    <li v-if="selectedOrder.payer_bank_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款人銀行</span>
-                      <span>{{ selectedOrder.payer_bank_code }}</span>
+                      <span class="text-muted">我的付款銀行</span>
+                      <span>{{ getBankLabel(selectedOrder.payer_bank_code) }}</span>
                   </li>
                   <li v-if="selectedOrder.payer_card_no" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">付款人帳號</span>
+                      <span class="text-muted">我的付款帳號</span>
                       <span>{{ selectedOrder.payer_card_no }}</span>
                   </li>
 
                   <!-- Payee Info -->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款銀行代碼</span>
-                      <span>{{ selectedOrder.payee_bank_code }}</span>
+                      <span class="text-muted">平台收款銀行</span>
+                      <span>{{ getBankLabel(selectedOrder.payee_bank_code) }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款帳號</span>
-                      <span>{{ selectedOrder.payee_card_no }}</span>
+                      <span class="text-muted">平台收款帳號</span>
+                      <div class="d-flex align-items-center">
+                          <span>{{ selectedOrder.payee_card_no }}</span>
+                           <button class="btn btn-sm btn-outline-secondary p-0 px-1 ms-2" @click="copyToClipboard(selectedOrder.payee_card_no)" title="複製">
+                              <i class="bi bi-copy"></i>
+                          </button>
+                      </div>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">會員遊戲帳號</span>
@@ -1766,7 +1867,7 @@ const confirmEmail = async () => {
                   <!-- Refund Info -->
                   <li v-if="selectedOrder.refund_bank_code" class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">退款銀行</span>
-                      <span>{{ selectedOrder.refund_bank_code }}</span>
+                      <span>{{ getBankLabel(selectedOrder.refund_bank_code) }}</span>
                   </li>
                   <li v-if="selectedOrder.refund_card_no" class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">退款帳號</span>
@@ -1774,21 +1875,21 @@ const confirmEmail = async () => {
                   </li>
 
                   <!-- Flags -->
-                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <!--<li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">已通知 (Notified)</span>
                       <span :class="selectedOrder.is_notified ? 'text-success' : 'text-danger'">
                           <i class="bi" :class="selectedOrder.is_notified ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
                       </span>
-                  </li>
-                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                  </li> -->
+                  <!-- <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">已圈存 (Earmarked)</span>
                       <span :class="selectedOrder.is_earmarked ? 'text-success' : 'text-danger'">
                           <i class="bi" :class="selectedOrder.is_earmarked ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
                       </span>
-                  </li>
+                  </li> -->
 
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">訂單狀態 (Status)</span>
+                      <span class="text-muted">訂單狀態</span>
                       <span class="badge" :class="[getBuyingOrderStatusInfo(selectedOrder.status).class, getBuyingOrderStatusInfo(selectedOrder.status).text]">
                           {{ getBuyingOrderStatusInfo(selectedOrder.status).label }}
                       </span>
@@ -1842,8 +1943,14 @@ const confirmEmail = async () => {
               <ul class="list-group list-group-flush small">
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">訂單 ID</span>
-                      <span class="fw-bold">{{ selectedOrder.id }}</span>
+                      <div class="d-flex align-items-center">
+                          <span class="fw-bold me-2">{{ selectedOrder.id }}</span>
+                          <button class="btn btn-sm btn-outline-secondary p-0 px-1" @click="copyToClipboard(selectedOrder.id)" title="複製">
+                              <i class="bi bi-copy"></i>
+                          </button>
+                      </div>
                   </li>
+                  
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">遊戲名稱</span>
                       <span>{{ getStoreName(selectedOrder.store_id) }}</span>
@@ -1879,36 +1986,41 @@ const confirmEmail = async () => {
                       <span>{{ selectedOrder.payer_game_account }}</span>
                   </li>
                   <li class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">收款遊戲帳號</span>
-                      <span>{{ selectedOrder.payee_game_account }}</span>
+                      <span class="text-muted">平台收幣帳號</span>
+                      <div class="d-flex align-items-center">
+                          <span class="fw-bold me-2">{{ selectedOrder.payee_game_account }}</span>
+                          <button class="btn btn-sm btn-outline-secondary p-0 px-1" @click="copyToClipboard(selectedOrder.payee_game_account)" title="複製">
+                              <i class="bi bi-copy"></i>
+                          </button>
+                      </div>
                   </li>
 
                    <!-- Bank Info -->
                   <li v-if="selectedOrder.bank_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">銀行代碼</span>
-                      <span>{{ selectedOrder.bank_code }}</span>
+                      <span class="text-muted">收款銀行</span>
+                      <span>{{ getBankLabel(selectedOrder.bank_code) }}</span>
                   </li>
-                   <li v-if="selectedOrder.branch_code" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">分行代碼</span>
+                  <!-- <li v-if="selectedOrder.branch_code" class="list-group-item d-flex justify-content-between align-items-center">
+                      <span class="text-muted">收款分行</span>
                       <span>{{ selectedOrder.branch_code }}</span>
-                  </li>
+                  </li> -->
                    <li v-if="selectedOrder.account_number" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">銀行帳號</span>
+                      <span class="text-muted">收款銀行帳號</span>
                       <span>{{ selectedOrder.account_number }}</span>
                   </li>
                    <li v-if="selectedOrder.account_name" class="list-group-item d-flex justify-content-between align-items-center">
-                      <span class="text-muted">帳戶名稱</span>
+                      <span class="text-muted">收款人姓名</span>
                       <span>{{ selectedOrder.account_name }}</span>
                   </li>
 
 
                   <!-- Flags -->
-                   <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <!-- <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">已通知</span>
                       <span :class="selectedOrder.is_notified ? 'text-success' : 'text-danger'">
                           <i class="bi" :class="selectedOrder.is_notified ? 'bi-check-circle-fill' : 'bi-x-circle-fill'"></i>
                       </span>
-                  </li>
+                  </li> -->
 
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">訂單狀態</span>

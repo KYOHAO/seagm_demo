@@ -56,6 +56,9 @@ const handleLogin = async () => {
       // Use useAuth to login
       login(data.data.token, data.data.user)
       
+      // Fetch Supported Banks and cache
+      await fetchSupportedBanks()
+
       //alert('登入成功！')
       toast.success('登入成功！')
       router.push('/account')
@@ -69,6 +72,20 @@ const handleLogin = async () => {
   } finally {
     isLoading.value = false
   }
+}
+
+const fetchSupportedBanks = async () => {
+    try {
+        const response = await apiFetch(`${import.meta.env.VITE_API_BASE_URL}/supported-banks`)
+        const data = await response.json()
+        if (response.ok && data.code === 0) {
+            localStorage.setItem('supportedBanks', JSON.stringify(data.data.banks))
+        } else {
+            console.error('取得銀行列表失敗:', data)
+        }
+    } catch (error) {
+        console.error('取得銀行列表錯誤:', error)
+    }
 }
 
 const handleRegister = () => {
