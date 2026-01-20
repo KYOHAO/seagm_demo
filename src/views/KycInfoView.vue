@@ -24,10 +24,11 @@ const dateError = ref('')
 const isVerificationFailed = ref(false)
 const isCheckingStatus = ref(true)
 
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 
-onMounted(async () => {
-    isCheckingStatus.value = true
+let pollingTimer = null
+
+const checkKycStatus = async () => {
     try {
         const token = localStorage.getItem('authToken')
         if (!token) {
@@ -42,6 +43,18 @@ onMounted(async () => {
 
         if (response.ok && data.code === 0) {
             const user = data.data.user
+            
+            // If verifying, wait 3 seconds and check again
+            if (user.kyc_verifying) {
+                isCheckingStatus.value = true
+                pollingTimer = setTimeout(checkKycStatus, 3000)
+                return
+            }
+
+            // Stop loading as verification is done (or not verifying)
+            isCheckingStatus.value = false
+
+            // Existing logic
             // kyc_level === 1 && kyc_step === 0 -> Failed, re-verify needed
             if (user.kyc_level === 1 && user.kyc_step === 0) {
                 isVerificationFailed.value = true
@@ -61,8 +74,17 @@ onMounted(async () => {
     } catch (error) {
         console.error('Check KYC Status Error:', error)
         router.push('/account')
-    } finally {
-        isCheckingStatus.value = false
+    }
+}
+
+onMounted(() => {
+    isCheckingStatus.value = true
+    checkKycStatus()
+})
+
+onUnmounted(() => {
+    if (pollingTimer) {
+        clearTimeout(pollingTimer)
     }
 })
 
