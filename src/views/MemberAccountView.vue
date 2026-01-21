@@ -1963,10 +1963,10 @@ const confirmEmail = async () => {
                       <span class="text-muted">金幣數量</span>
                       <span>{{ formatNumber(selectedOrder.quantity) }}</span>
                   </li>
-                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                  <!-- <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">已交付</span>
                       <span>{{ formatNumber(selectedOrder.delivered_quantity) }}</span>
-                  </li>
+                  </li> -->
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                       <span class="text-muted">比率</span>
                       <span>1 : {{ formatNumber(selectedOrder.unit_price) }}</span>
